@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root{
+  --bg-900: #030617;
+  --card: rgba(15,23,42,0.6);
+  --card-2: rgba(20,25,40,0.6);
+  --accent: #06b6d4; /* cyan-500 */
+  --accent-2: #7c3aed; /* indigo */
+  --muted: #94a3b8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(124,58,237,0.06), transparent 15%),
+              radial-gradient(1000px 500px at 90% 90%, rgba(6,182,212,0.04), transparent 20%),
+              var(--bg-900);
+  color: #e6eef8;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Polished card */
+.card {
+  background: linear-gradient(180deg, rgba(17,24,39,0.72), rgba(12,18,30,0.6));
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  border-radius: 16px;
+}
+
+.btn-mic{
+  background: linear-gradient(90deg, var(--accent), #0ea5b4 60%);
+  box-shadow: 0 8px 20px rgba(6,182,212,0.12);
+}
+
+.btn-mic:active{ transform: scale(.985); }
+
+.muted { color: var(--muted); }
+
+/* YouTube-style mic ring */
+.mic-wrapper { position: relative; display: inline-block; }
+.mic-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+.mic-ring .ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid rgba(6,182,212,0.16);
+  opacity: 0;
+  animation: ringPulse 1500ms infinite ease-out;
+}
+.mic-ring .ring:nth-child(2) { animation-delay: 300ms; }
+.mic-ring .ring:nth-child(3) { animation-delay: 600ms; }
+
+@keyframes ringPulse {
+  0% { transform: scale(.7); opacity: .6; }
+  70% { transform: scale(1.6); opacity: .12; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* small transcript label above mic */
+.mic-label {
+  color: #e6eef8;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 12px;
+  min-height: 20px;
+  opacity: .95;
+}
+
+
