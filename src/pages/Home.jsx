@@ -17,7 +17,7 @@ export default function Home() {
     recognition.onresult = async (event) => {
       const text = event.results[0][0].transcript;
       try {
-        const res = await fetch("http://localhost:5000/chat", {
+        const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text }),
@@ -37,33 +37,84 @@ export default function Home() {
     recognition.start();
   };
 
+  const statusText = listening ? "Listening..." : "Tap the mic to speak";
+
   return (
-    <main className="mx-auto flex min-h-screen w-full items-center justify-center px-4 py-12">
-      <div className="flex flex-col items-center">
-        <div className="mic-label" id="transcriptLabel">{listening ? "Listening..." : "Tap to speak"}</div>
+    <main className="aura-screen">
+      <div className="aura-glow aura-glow-top" />
+      <div className="aura-glow aura-glow-right" />
 
-        <div className="mic-wrapper">
-          <button
-            onClick={startVoice}
-            aria-label="Start speaking"
-            className={`btn-mic relative flex h-20 w-20 items-center justify-center rounded-full text-white shadow-lg transition-transform ${
-              listening ? "scale-95" : "hover:scale-[1.03]"
-            }`}
-          >
-            <span className="sr-only">Start Voice</span>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" fill="white" opacity="0.98"/>
-              <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V22h2v-4.08A7 7 0 0 0 19 11z" fill="white" opacity="0.06"/>
-            </svg>
-          </button>
+      <header className="aura-header">
+        <div className="aura-logo">
+          <span className="aura-logo-mark" />
+          Aura
+        </div>
+      </header>
 
-          <div className="mic-ring" aria-hidden>
-            <div className={`ring ${listening ? '' : 'opacity-0'}`}></div>
-            <div className={`ring ${listening ? '' : 'opacity-0'}`}></div>
-            <div className={`ring ${listening ? '' : 'opacity-0'}`}></div>
+      <div className="aura-body">
+        <span className="aura-state-label aura-state-label-active">{statusText}</span>
+
+        <div className="aura-visualizer-shell">
+          <div className="aura-visualizer-glass">
+            <div className="aura-visualizer-bars">
+              {Array.from({ length: 13 }).map((_, index) => (
+                <span
+                  key={index}
+                  className={`aura-bar ${listening ? "aura-bar-active" : ""}`}
+                  style={{ height: `${7 + index * 3.5}px` }}
+                />
+              ))}
+            </div>
           </div>
         </div>
+
+        <button className={`aura-mic-button ${listening ? "aura-mic-active" : ""}`} onClick={startVoice}>
+          <span className="aura-mic-ring" aria-hidden="true" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="aura-mic-icon"
+            aria-hidden="true"
+          >
+            <path d="M12 19v3" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <rect x="9" y="2" width="6" height="13" rx="3" />
+          </svg>
+          {listening ? "Listening" : "Tap to ask Aura"}
+        </button>
+
+        <div className="aura-hint-card">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="aura-hint-icon"
+            aria-hidden="true"
+          >
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+            <path d="M20 3v4" />
+            <path d="M22 5h-4" />
+            <path d="M4 17v2" />
+            <path d="M5 18H3" />
+          </svg>
+          Ask anything — calendar, drafts, reminders, ideas.
+        </div>
       </div>
+
+      <div className="aura-footer">Aura · voice-first AI</div>
     </main>
   );
 }

@@ -81,3 +81,245 @@ body {
 }
 
 
+
+/* Aura landing page styles */
+.aura-screen {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: radial-gradient(900px circle at 50% 15%, rgba(255,59,48,0.12), transparent 35%),
+              radial-gradient(700px circle at 20% 20%, rgba(255,155,0,0.12), transparent 30%),
+              radial-gradient(900px circle at 85% 30%, rgba(255,59,48,0.08), transparent 25%),
+              linear-gradient(180deg, #fff 0%, #f7f5f2 100%);
+  color: #1d1d1f;
+}
+
+.aura-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(100px);
+  opacity: 0.75;
+}
+
+.aura-glow-top {
+  width: 700px;
+  height: 700px;
+  top: -160px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,59,48,0.08);
+}
+
+.aura-glow-right {
+  width: 500px;
+  height: 500px;
+  top: 33%;
+  right: -120px;
+  background: rgba(255,155,0,0.08);
+}
+
+.aura-header {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 10;
+}
+
+.aura-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1d1d1f;
+}
+
+.aura-logo-mark {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #1d1d1f;
+}
+
+.aura-logo-mark::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at top left, #ff3b30, #ff2a68 45%, #ff9b00);
+}
+
+.aura-body {
+  position: relative;
+  z-index: 1;
+  padding: 0 24px;
+  width: min(100%, 680px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.aura-state-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #ff3b30;
+  margin-bottom: 32px;
+  transition: color 180ms ease;
+}
+
+.aura-state-label.aura-state-label-active {
+  color: #1d1d1f;
+}
+
+.aura-state-label::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(29,29,31,0.2);
+}
+
+.aura-visualizer-shell {
+  margin-bottom: 40px;
+  width: 260px;
+  height: 260px;
+}
+
+.aura-visualizer-glass {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 30px 80px rgba(255,255,255,0.18);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aura-visualizer-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at top, rgba(255,255,255,0.7), transparent 45%);
+}
+
+.aura-visualizer-bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 44%;
+}
+
+.aura-bar {
+  width: 7px;
+  border-radius: 9999px;
+  background: linear-gradient(to top, #ff3b30, #ff2a68, #ff9b00);
+  opacity: 0.35;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.aura-bar-active {
+  opacity: 1;
+  transform: translateY(-4px);
+}
+
+.aura-mic-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 26px;
+  margin-bottom: 24px;
+  border: none;
+  border-radius: 9999px;
+  background: #1d1d1f;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  box-shadow: 0 24px 60px rgba(29,29,31,0.14);
+}
+
+.aura-mic-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 28px 72px rgba(29,29,31,0.18);
+}
+
+.aura-mic-button.aura-mic-active {
+  background: #111111;
+  box-shadow: 0 0 0 4px rgba(255,59,48,0.22), 0 32px 80px rgba(29,29,31,0.18);
+  transform: translateY(-1px) scale(1.02);
+}
+
+.aura-mic-button .aura-mic-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 4px rgba(255,59,48,0.08);
+  opacity: 0;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.aura-mic-button.aura-mic-active .aura-mic-ring {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.aura-mic-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.aura-hint-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 16px 18px;
+  border-radius: 9999px;
+  background: rgba(29,29,31,0.06);
+  color: #6b6b72;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.aura-hint-icon {
+  width: 18px;
+  height: 18px;
+  color: #ff3b30;
+}
+
+.aura-footer {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #86868b;
+}
