@@ -1,36 +1,33 @@
-# AI Voice PWA — Local Dev
+# AI Voice Assistant PWA
 
-Run frontend:
+A React + Vite app with Vercel serverless API routes for Groq chat completions and ElevenLabs TTS.
+
+## Local development
+
+Install dependencies and start the frontend:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Run backend (separate shell):
+Use Vercel serverless APIs in production. For local server testing, the legacy backend is in `server/`.
 
-```bash
-cd server
-npm install
-GROQ_API_KEY=your_key_here node server.js
+## Deployment
+
+This project is configured for Vercel with:
+- `vercel.json` for API functions
+- `/api/chat.js` for Groq proxying
+- `/api/voice.js` for ElevenLabs TTS
+
+## Environment variables
+
+Set these in Vercel or a local `.env` file:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=groq/compound
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+ELEVENLABS_VOICE_ID=your_voice_id_here
 ```
 
-Notes:
-- If `GROQ_API_KEY` is not set the server will echo the message (useful for offline dev).
-- Install `vite-plugin-pwa` to enable PWA features: `npm install -D vite-plugin-pwa`.
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
