@@ -1,5 +1,14 @@
 import axios from 'axios';
 
+const MAX_VOICE_TEXT_LENGTH = 2500;
+
+function trimText(text, maxLength = MAX_VOICE_TEXT_LENGTH) {
+  if (!text) return '';
+  const trimmed = String(text).trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength).trimEnd()}…`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -7,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const text = req.body?.text;
+    const text = trimText(req.body?.text);
     console.log('/api/voice request body length', (text || '').length);
     if (!text) return res.status(400).json({ error: 'missing text' });
 

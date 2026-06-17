@@ -430,7 +430,10 @@ body {
 }
 
 .aura-conversation-card {
-  width: min(100%, 560px);
+  /* wider conversation card for long replies */
+  width: min(100%, 760px);
+  /* increase visible area, but keep a sensible cap */
+  max-height: min(60vh, 640px);
   margin-top: 20px;
   padding: 22px 24px;
   border-radius: 28px;
@@ -438,6 +441,21 @@ body {
   box-shadow: 0 24px 70px rgba(29, 29, 31, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.9);
   text-align: left;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* hide native scrollbar but keep scrolling functional */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.aura-conversation-card::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+.aura-conversation-card::-webkit-scrollbar-thumb {
+  background: transparent;
 }
 
 .aura-conversation-block + .aura-conversation-block {
@@ -470,6 +488,113 @@ body {
   color: #1d1d1f;
 }
 
+.aura-markdown {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1d1d1f;
+  word-break: break-word;
+}
+
+.aura-markdown > :first-child {
+  margin-top: 0;
+}
+
+.aura-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.aura-markdown h1,
+.aura-markdown h2,
+.aura-markdown h3,
+.aura-markdown h4 {
+  margin: 1.1em 0 0.5em;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+.aura-markdown h1 { font-size: 1.35rem; }
+.aura-markdown h2 { font-size: 1.2rem; }
+.aura-markdown h3 { font-size: 1.05rem; }
+.aura-markdown h4 { font-size: 0.95rem; }
+
+.aura-markdown p {
+  margin: 0.65em 0;
+}
+
+.aura-markdown strong {
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+.aura-markdown ul,
+.aura-markdown ol {
+  margin: 0.65em 0;
+  padding-left: 1.25rem;
+}
+
+.aura-markdown li {
+  margin: 0.35em 0;
+}
+
+.aura-markdown li::marker {
+  color: #ff6b5b;
+}
+
+.aura-markdown hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1px solid rgba(29, 29, 31, 0.1);
+}
+
+.aura-markdown code {
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  background: rgba(29, 29, 31, 0.06);
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.aura-markdown pre {
+  margin: 0.75em 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(29, 29, 31, 0.06);
+  overflow-x: auto;
+}
+
+.aura-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.aura-markdown table {
+  width: 100%;
+  margin: 0.85em 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.aura-markdown th,
+.aura-markdown td {
+  padding: 10px 12px;
+  border: 1px solid rgba(29, 29, 31, 0.1);
+  text-align: left;
+  vertical-align: top;
+}
+
+.aura-markdown th {
+  background: rgba(255, 107, 91, 0.08);
+  font-weight: 700;
+}
+
+.aura-markdown blockquote {
+  margin: 0.75em 0;
+  padding: 0.5em 0 0.5em 1em;
+  border-left: 3px solid #ff6b5b;
+  color: #48484a;
+}
+
 .aura-hint-card {
   display: inline-flex;
   align-items: center;
@@ -491,7 +616,8 @@ body {
 }
 
 .aura-text-card {
-  width: min(100%, 600px);
+  /* wider text input card for more comfortable typing */
+  width: min(100%, 760px);
   margin-top: 28px;
   padding: 20px;
   border-radius: 32px;

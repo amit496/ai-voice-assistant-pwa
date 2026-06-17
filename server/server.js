@@ -3,20 +3,34 @@ import express from "express";
 import cors from "cors";
 import axios from "axios";
 
+const VOICE_SYSTEM_PROMPT =
+  "You are Nova, a voice-first AI assistant. Reply in short, plain sentences only. No markdown, no tables, no bullet lists, no headings. Keep answers to 2-4 brief sentences suitable for speaking aloud. Be direct and conversational.";
+
+const MAX_MESSAGE_LENGTH = 3000;
+const MAX_REPLY_TOKENS = 200;
+const MAX_VOICE_TEXT_LENGTH = 2500;
+const JSON_BODY_LIMIT = "2mb";
+
+function trimMessage(message, maxLength = MAX_MESSAGE_LENGTH) {
+  if (!message) return "";
+  const trimmed = String(message).trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength).trimEnd()}…`;
+}
+
 const app = express();
 app.use(cors());
-// allow larger JSON bodies (adjust if you expect bigger payloads)
-app.use(express.json({ limit: '256kb' }));
+app.use(express.json({ limit: JSON_BODY_LIMIT }));
+app.use(express.urlencoded({ limit: JSON_BODY_LIMIT, extended: true }));
 
 // log incoming request sizes for debugging
 app.use((req, res, next) => {
-  try {
-    console.log('incoming', req.method, req.url, 'content-length=', req.headers['content-length']);
-  } catch (e) {}
+  console.log("incoming", req.method, req.url, "content-length=", req.headers["content-length"]);
   next();
 });
 
-const GROQ_MODEL = process.env.GROQ_MODEL || "groq/compound";
+const FALLBACK_GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || FALLBACK_GROQ_MODEL;
 const GROQ_KEY = process.env.GROQ_API_KEY;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
@@ -39,8 +53,8 @@ app.get("/config", (req, res) => {
 });
 
 app.post("/voice", async (req, res) => {
-  console.log("/voice request body", { length: (req.body?.text || '').length });
-  let text = req.body?.text;
+  let text = trimMessage(req.body?.text, MAX_VOICE_TEXT_LENGTH);
+  console.log("/voice request body", { length: text.length });
   if (!text) {
     console.error("/voice missing text");
     return res.status(400).json({ error: "missing text" });
@@ -83,18 +97,17 @@ app.post("/voice", async (req, res) => {
 });
 
 app.post("/chat", async (req, res) => {
-  console.log("/chat request body", { length: (req.body?.message || '').length });
-  let message = req.body?.message;
+  const rawMessage = req.body?.message;
+  const message = trimMessage(rawMessage);
+  console.log("/chat request body", { rawLength: String(rawMessage || "").length, length: message.length });
+
   if (!message) {
     console.error("/chat missing message");
-    return res.status(400).json({ error: "missing message" });
+    return res.status(400).json({ error: "missing message", reply: "Please enter a message." });
   }
 
-  // Protect against overly large messages causing 413 errors or external API rejections
-  const MAX_MESSAGE_LENGTH = 5000; // characters - adjust as needed
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    console.warn('/chat message too large, truncating', message.length);
-    message = message.slice(0, MAX_MESSAGE_LENGTH);
+  if (String(rawMessage || "").trim().length > MAX_MESSAGE_LENGTH) {
+    console.warn("/chat message truncated", String(rawMessage).length);
   }
 
   if (!GROQ_KEY) {
@@ -103,30 +116,64 @@ app.post("/chat", async (req, res) => {
   }
 
   try {
-    console.log("/chat calling Groq", { model: GROQ_MODEL, message });
-    const response = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: GROQ_MODEL,
-        messages: [{ role: "user", content: message }],
-        max_tokens: 150,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${GROQ_KEY}`,
-          "Content-Type": "application/json",
+    const callGroq = (model) =>
+      axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model,
+          messages: [
+            { role: "system", content: VOICE_SYSTEM_PROMPT },
+            { role: "user", content: message },
+          ],
+          max_tokens: MAX_REPLY_TOKENS,
         },
+        {
+          headers: {
+            Authorization: `Bearer ${GROQ_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+    console.log("/chat calling Groq", { model: GROQ_MODEL, message });
+    let response;
+    try {
+      response = await callGroq(GROQ_MODEL);
+    } catch (err) {
+      const isTooLarge =
+        err?.response?.status === 413 ||
+        err?.response?.data?.error?.code === "request_too_large";
+      if (isTooLarge && GROQ_MODEL !== FALLBACK_GROQ_MODEL) {
+        console.warn("/chat model too large, retrying with", FALLBACK_GROQ_MODEL);
+        response = await callGroq(FALLBACK_GROQ_MODEL);
+      } else {
+        throw err;
       }
-    );
+    }
 
     console.log("/chat Groq response", response.data);
     const reply = response.data?.choices?.[0]?.message?.content || "(no reply)";
     res.json({ reply });
   } catch (err) {
     console.error("/chat Groq error", err?.response?.status, err?.response?.data || err.message || err);
-    const reply = err?.response?.data?.error?.message || "Error generating reply";
-    res.status(500).json({ reply });
+    const status = err?.response?.status;
+    const apiMessage = err?.response?.data?.error?.message;
+    const reply =
+      status === 413 || /entity too large/i.test(apiMessage || "")
+        ? "Your question is too long. Please ask a shorter question."
+        : apiMessage || "Error generating reply";
+    res.status(status === 413 ? 413 : 500).json({ reply, error: reply });
   }
+});
+
+app.use((err, req, res, next) => {
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({
+      error: "Request too large",
+      reply: "Your message is too long. Please ask a shorter question.",
+    });
+  }
+  next(err);
 });
 
 const PORT = process.env.PORT || 5000;

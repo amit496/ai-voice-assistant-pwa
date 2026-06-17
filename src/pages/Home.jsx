@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import MarkdownMessage, { buildSpeechText } from "../components/MarkdownMessage";
+import { trimMessage } from "../utils/messageLimits";
 
 const BAR_COUNT = 17;
 const BAR_HEIGHTS = [12, 22, 34, 44, 38, 28, 18, 14, 20, 32, 42, 36, 26, 16, 12, 24, 40];
@@ -106,33 +108,49 @@ export default function Home() {
   }, [phase]);
 
   const speakReply = (reply) => {
-    if (!reply || !window.speechSynthesis) return;
+    const speechText = buildSpeechText(reply);
+    if (!speechText || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const speech = new SpeechSynthesisUtterance(reply);
+    const speech = new SpeechSynthesisUtterance(speechText);
     speech.onstart = () => setPhase("speaking");
     speech.onend = () => setPhase("responded");
     window.speechSynthesis.speak(speech);
   };
 
   const sendMessage = async (message) => {
-    if (!message) return;
-    setUserMessage(message);
+    const safeMessage = trimMessage(message);
+    if (!safeMessage) return;
+
+    setUserMessage(safeMessage);
     setLiveTranscript("");
+    window.speechSynthesis?.cancel();
     setPhase("thinking");
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message: safeMessage }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errorReply =
+          data.reply ||
+          data.error ||
+          (res.status === 413
+            ? "Your question is too long. Please ask a shorter question."
+            : "Something went wrong. Try again.");
+        setAuraReply(errorReply);
+        setPhase("responded");
+        return;
+      }
       const reply = data.reply || "No response from Nova.";
       setAuraReply(reply);
       setPhase("responded");
       speakReply(reply);
     } catch (err) {
       console.error(err);
-      setPhase("idle");
+      setAuraReply("Something went wrong. Try again.");
+      setPhase("responded");
     }
   };
 
@@ -144,6 +162,8 @@ export default function Home() {
   };
 
   const startVoice = () => {
+    window.speechSynthesis?.cancel();
+
     if (phase === "listening") {
       stopListening();
       return;
@@ -197,7 +217,7 @@ export default function Home() {
       if (finalText) {
         processingRef.current = true;
         recognition.stop();
-        sendMessage(finalText.trim());
+        sendMessage(trimMessage(finalText));
       }
     };
 
@@ -206,7 +226,7 @@ export default function Home() {
 
   const handleTextSubmit = async (event) => {
     event.preventDefault();
-    const trimmed = inputText.trim();
+    const trimmed = trimMessage(inputText);
     if (!trimmed) return;
     await sendMessage(trimmed);
     setInputText("");
@@ -316,7 +336,7 @@ export default function Home() {
             </div>
             <div className="aura-conversation-block">
               <span className="aura-conversation-label aura-conversation-label-aura">Nova</span>
-              <p className="aura-conversation-text">{auraReply}</p>
+              <MarkdownMessage content={auraReply} />
             </div>
           </div>
         )}
