@@ -10,7 +10,7 @@ export default function Header() {
 
       <h1 className="text-3xl font-extrabold leading-tight text-white md:text-4xl">
         Talk to your
-        <span className="block bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-indigo-400">
+        <span className="block bg-clip-text text-transparent bg-linear-to-r from-cyan-300 to-indigo-400">
           Personal AI Assistant
         </span>
       </h1>
