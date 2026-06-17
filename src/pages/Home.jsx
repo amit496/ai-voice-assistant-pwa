@@ -2,13 +2,18 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [listening, setListening] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(null);
+  const [showTextForm, setShowTextForm] = useState(false);
   const [inputText, setInputText] = useState("");
   const [statusMessage, setStatusMessage] = useState("Tap the mic to speak");
 
   useEffect(() => {
     const supported = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
     setSpeechSupported(supported);
+    if (!supported) {
+      setShowTextForm(true);
+      setStatusMessage("Text input mode activated.");
+    }
   }, []);
 
   const speakReply = (reply) => {
@@ -39,7 +44,10 @@ export default function Home() {
   const startVoice = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setStatusMessage("Speech not supported. Use text input instead.");
+      setShowTextForm(true);
+      setListening(true);
+      setStatusMessage("Text input mode activated.");
+      setTimeout(() => setListening(false), 650);
       return;
     }
 
@@ -58,6 +66,7 @@ export default function Home() {
     recognition.onerror = () => {
       setListening(false);
       setStatusMessage("Speech recognition failed. Try text input.");
+      setShowTextForm(true);
     };
 
     recognition.onresult = async (event) => {
@@ -70,7 +79,9 @@ export default function Home() {
 
   const handleTextSubmit = async (event) => {
     event.preventDefault();
-    await sendMessage(inputText.trim());
+    const trimmed = inputText.trim();
+    if (!trimmed) return;
+    await sendMessage(trimmed);
     setInputText("");
   };
 
@@ -126,22 +137,29 @@ export default function Home() {
             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
             <rect x="9" y="2" width="6" height="13" rx="3" />
           </svg>
-          {speechSupported ? (listening ? "Listening" : "Tap to ask Aura") : "Use text input"}
+          {listening
+            ? "Listening"
+            : showTextForm || speechSupported === false
+            ? "Type to ask Aura"
+            : "Tap to ask Aura"}
         </button>
 
-        {!speechSupported && (
-          <form className="aura-text-form" onSubmit={handleTextSubmit}>
-            <input
-              className="aura-text-input"
-              type="text"
-              placeholder="Type your question for Aura"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-            />
-            <button className="aura-text-submit" type="submit">
-              Send
-            </button>
-          </form>
+        {(showTextForm || !speechSupported) && (
+          <div className="aura-text-card">
+            <div className="aura-text-card-label">Text input mode</div>
+            <form className="aura-text-form" onSubmit={handleTextSubmit}>
+              <input
+                className="aura-text-input"
+                type="text"
+                placeholder="Type your question for Aura"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+              />
+              <button className="aura-text-submit" type="submit">
+                Send
+              </button>
+            </form>
+          </div>
         )}
 
         <div className="aura-hint-card">
