@@ -197,6 +197,42 @@ body {
   width: 100%;
 }
 
+.aura-mobile-tabs {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: white;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  z-index: 50;
+  flex-direction: row;
+  gap: 0;
+}
+
+.aura-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #86868b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.aura-tab:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.aura-tab-active {
+  color: #ff6b5b;
+  border-bottom-color: #ff6b5b;
+}
+
 .aura-chat-panel {
   flex: 1;
   display: flex;
@@ -205,6 +241,14 @@ body {
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
   max-width: 50%;
+}
+
+.aura-chat-desktop {
+  display: flex;
+}
+
+.aura-chat-mobile {
+  display: none;
 }
 
 .aura-chat-header {
@@ -1118,20 +1162,40 @@ body {
 @media (max-width: 768px) {
   .aura-main-content {
     flex-direction: column;
+    padding-bottom: 56px;
+  }
+
+  .aura-mobile-tabs {
+    display: flex;
   }
 
   .aura-chat-panel {
     max-width: 100%;
     border-right: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    max-height: 28vh;
-    flex: 0 0 auto;
+    border-bottom: none;
+    max-height: 100%;
+    flex: 1;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: 56px;
+    background: white;
+  }
+
+  .aura-chat-desktop {
+    display: none;
+  }
+
+  .aura-chat-mobile {
+    display: flex;
   }
 
   .aura-assistant-panel {
     max-width: 100%;
     flex: 1;
-    padding: 20px 16px;
+    padding: 20px 16px 0;
+    overflow-y: auto;
   }
 
   .aura-app-header {
@@ -1158,6 +1222,8 @@ body {
 
   .aura-chat-header {
     padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   }
 
   .aura-chat-title {
@@ -1206,8 +1272,9 @@ body {
   }
 
   .aura-main-content {
-    height: calc(100vh - 60px);
     margin-top: 60px;
+    height: calc(100vh - 60px);
+    padding-bottom: 56px;
   }
 
   .aura-logo-section {
@@ -1228,11 +1295,13 @@ body {
   }
 
   .aura-chat-panel {
-    max-height: 25vh;
+    top: 60px;
+    bottom: 56px;
   }
 
   .aura-chat-header {
     padding: 10px 12px;
+    background: white;
   }
 
   .aura-chat-title {
@@ -1264,13 +1333,13 @@ body {
   }
 
   .aura-assistant-panel {
-    padding: 14px 12px;
+    padding: 12px 12px 0;
   }
 
   .aura-visualizer-shell {
-    width: 180px;
-    height: 180px;
-    margin-bottom: 20px;
+    width: 160px;
+    height: 160px;
+    margin-bottom: 16px;
   }
 
   .aura-mic-button {
@@ -1286,6 +1355,11 @@ body {
   .aura-copy-reply-btn {
     padding: 8px 12px;
     font-size: 11px;
+  }
+
+  .aura-tab {
+    font-size: 11px;
+    padding: 10px 12px;
   }
 
   .aura-hint-card {

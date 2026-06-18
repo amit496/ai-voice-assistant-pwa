@@ -20,6 +20,7 @@ export default function Home() {
   const [auraReply, setAuraReply] = useState("");
   const [liveTranscript, setLiveTranscript] = useState("");
   const [barLevels, setBarLevels] = useState(IDLE_BAR_HEIGHTS);
+  const [showChatPanel, setShowChatPanel] = useState(false); // Mobile tab state
   const recognitionRef = useRef(null);
   const processingRef = useRef(false);
   const audioContextRef = useRef(null);
@@ -237,13 +238,6 @@ export default function Home() {
     setInputText("");
   };
 
-  const clearConversation = () => {
-    setConversation([]);
-    setAuraReply("");
-    setPhase("idle");
-    setLiveTranscript("");
-  };
-
   const latestReply = auraReply || conversation.slice().reverse().find((item) => item.role === "assistant")?.text || "";
 
   const copyReply = async () => {
@@ -293,66 +287,149 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content - 50/50 Layout */}
+      {/* Main Content - 50/50 Layout (Desktop) / Tabs (Mobile) */}
       <div className="aura-main-content">
+        {/* Mobile Tabs */}
+        {hasConversation && (
+          <div className="aura-mobile-tabs">
+            <button
+              className={`aura-tab ${!showChatPanel ? "aura-tab-active" : ""}`}
+              onClick={() => setShowChatPanel(false)}
+              type="button"
+            >
+              🎤 Mic
+            </button>
+            <button
+              className={`aura-tab ${showChatPanel ? "aura-tab-active" : ""}`}
+              onClick={() => setShowChatPanel(true)}
+              type="button"
+            >
+              💬 Chat ({conversation.length})
+            </button>
+          </div>
+        )}
+
         {/* Left Panel - Chat History */}
-        <div className="aura-chat-panel">
-          <div className="aura-chat-header">
-            <h2 className="aura-chat-title">Conversation</h2>
-            {hasConversation && (
-              <button
-                className="aura-chat-clear-btn"
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("Clear button clicked");
-                  clearConversation();
-                }}
-                title="Clear conversation"
-                aria-label="Clear conversation"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          <div className="aura-chat-messages">
-            {conversation.length === 0 ? (
-              <div className="aura-chat-empty">
-                <div className="aura-empty-icon">💬</div>
-                <p>No messages yet. Start by tapping the mic!</p>
-              </div>
-            ) : (
-              conversation.map((entry, index) => (
-                <div
-                  key={`${entry.role}-${index}-${entry.text.slice(0, 20)}`}
-                  className={`aura-message-item aura-message-${entry.role}`}
+        {!showChatPanel && (
+          <div className="aura-chat-panel aura-chat-desktop">
+            <div className="aura-chat-header">
+              <h2 className="aura-chat-title">Conversation</h2>
+              {hasConversation && (
+                <button
+                  className="aura-chat-clear-btn"
+                  type="button"
+                  onClick={() => {
+                    setConversation([]);
+                    setAuraReply("");
+                    setPhase("idle");
+                    setLiveTranscript("");
+                  }}
+                  title="Clear all messages"
+                  aria-label="Clear conversation"
                 >
-                  <div className="aura-message-label">
-                    {entry.role === "user" ? "👤 You" : "🤖 Nova"}
-                  </div>
-                  {entry.role === "assistant" ? (
-                    <MarkdownMessage content={entry.text} />
-                  ) : (
-                    <p className="aura-message-text">{entry.text}</p>
-                  )}
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="aura-chat-messages">
+              {conversation.length === 0 ? (
+                <div className="aura-chat-empty">
+                  <div className="aura-empty-icon">💬</div>
+                  <p>No messages yet. Start by tapping the mic!</p>
                 </div>
-              ))
+              ) : (
+                conversation.map((entry, index) => (
+                  <div
+                    key={`${entry.role}-${index}-${entry.text.slice(0, 20)}`}
+                    className={`aura-message-item aura-message-${entry.role}`}
+                  >
+                    <div className="aura-message-label">
+                      {entry.role === "user" ? "👤 You" : "🤖 Nova"}
+                    </div>
+                    {entry.role === "assistant" ? (
+                      <MarkdownMessage content={entry.text} />
+                    ) : (
+                      <p className="aura-message-text">{entry.text}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+            {hasConversation && auraReply && (
+              <div className="aura-chat-footer">
+                <button
+                  className="aura-copy-reply-btn"
+                  type="button"
+                  onClick={copyReply}
+                  title="Copy last reply"
+                >
+                  📋 Copy Reply
+                </button>
+              </div>
             )}
           </div>
-          {hasConversation && latestReply && (
-            <div className="aura-chat-footer">
-              <button
-                className="aura-copy-reply-btn"
-                type="button"
-                onClick={copyReply}
-                title="Copy last reply"
-              >
-                📋 Copy Reply
-              </button>
+        )}
+
+        {/* Mobile Chat Panel (Hidden by default) */}
+        {showChatPanel && (
+          <div className="aura-chat-panel aura-chat-mobile">
+            <div className="aura-chat-header">
+              <h2 className="aura-chat-title">Conversation</h2>
+              {hasConversation && (
+                <button
+                  className="aura-chat-clear-btn"
+                  type="button"
+                  onClick={() => {
+                    setConversation([]);
+                    setAuraReply("");
+                    setPhase("idle");
+                    setLiveTranscript("");
+                  }}
+                  title="Clear all messages"
+                  aria-label="Clear conversation"
+                >
+                  ✕
+                </button>
+              )}
             </div>
-          )}
-        </div>
+            <div className="aura-chat-messages">
+              {conversation.length === 0 ? (
+                <div className="aura-chat-empty">
+                  <div className="aura-empty-icon">💬</div>
+                  <p>No messages yet</p>
+                </div>
+              ) : (
+                conversation.map((entry, index) => (
+                  <div
+                    key={`${entry.role}-${index}-${entry.text.slice(0, 20)}`}
+                    className={`aura-message-item aura-message-${entry.role}`}
+                  >
+                    <div className="aura-message-label">
+                      {entry.role === "user" ? "👤 You" : "🤖 Nova"}
+                    </div>
+                    {entry.role === "assistant" ? (
+                      <MarkdownMessage content={entry.text} />
+                    ) : (
+                      <p className="aura-message-text">{entry.text}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+            {hasConversation && auraReply && (
+              <div className="aura-chat-footer">
+                <button
+                  className="aura-copy-reply-btn"
+                  type="button"
+                  onClick={copyReply}
+                  title="Copy last reply"
+                >
+                  📋 Copy Reply
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Right Panel - Assistant/Mic Controls */}
         <div className="aura-assistant-panel">
