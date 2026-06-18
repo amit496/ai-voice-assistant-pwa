@@ -303,8 +303,11 @@ export default function Home() {
               <button
                 className="aura-chat-clear-btn"
                 type="button"
-                onClick={clearConversation}
+                onClick={() => {
+                  clearConversation();
+                }}
                 title="Clear conversation"
+                aria-label="Clear conversation"
               >
                 ✕
               </button>
@@ -472,7 +475,7 @@ export default function Home() {
       </div>
       </div>
 
-      <div className="aura-footer">Nova · voice-first AI</div>
+      {/* <div className="aura-footer">Nova · voice-first AI</div> */}
     </main>
   );
 }
