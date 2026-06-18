@@ -63,6 +63,35 @@ export default function Home() {
 
     let cancelled = false;
 
+    // Web Speech API already owns the mic on mobile Chrome — a second getUserMedia()
+    // stream triggers: "Speech Recognition ... cannot record now as Chrome is recording".
+    if (speechSupported) {
+      const start = performance.now();
+
+      const animateBars = (now) => {
+        if (cancelled) return;
+
+        const elapsed = (now - start) / 1000;
+        setBarLevels(
+          Array.from({ length: BAR_COUNT }, (_, index) => {
+            const wave =
+              Math.sin(elapsed * 3.8 + index * 0.5) * 0.6 +
+              Math.sin(elapsed * 7 + index * 0.3) * 0.4;
+            const normalized = (wave + 1) / 2;
+            return 10 + normalized ** 0.85 * 42;
+          })
+        );
+        rafRef.current = requestAnimationFrame(animateBars);
+      };
+
+      rafRef.current = requestAnimationFrame(animateBars);
+
+      return () => {
+        cancelled = true;
+        stopAudioVisualizer();
+      };
+    }
+
     const startVisualizer = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -125,7 +154,7 @@ export default function Home() {
       cancelled = true;
       stopAudioVisualizer();
     };
-  }, [phase]);
+  }, [phase, speechSupported]);
 
   const speakReply = async (reply) => {
     const speechText = buildSpeechText(reply);
