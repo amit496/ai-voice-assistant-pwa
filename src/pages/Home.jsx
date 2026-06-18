@@ -303,7 +303,10 @@ export default function Home() {
               <button
                 className="aura-chat-clear-btn"
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Clear button clicked");
                   clearConversation();
                 }}
                 title="Clear conversation"

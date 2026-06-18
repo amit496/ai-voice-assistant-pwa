@@ -1124,14 +1124,14 @@ body {
     max-width: 100%;
     border-right: none;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    max-height: 40vh;
+    max-height: 28vh;
     flex: 0 0 auto;
   }
 
   .aura-assistant-panel {
     max-width: 100%;
     flex: 1;
-    padding: 24px 16px;
+    padding: 20px 16px;
   }
 
   .aura-app-header {
@@ -1157,38 +1157,45 @@ body {
   }
 
   .aura-chat-header {
-    padding: 16px 18px;
+    padding: 12px 16px;
   }
 
   .aura-chat-title {
-    font-size: 16px;
+    font-size: 15px;
+    margin: 0;
   }
 
   .aura-chat-messages {
-    padding: 12px;
-    gap: 8px;
+    padding: 10px;
+    gap: 6px;
   }
 
   .aura-message-item {
-    padding: 10px 12px;
-    font-size: 12px;
+    padding: 8px 10px;
+    font-size: 11px;
     max-width: 90% !important;
+    margin: 0;
   }
 
   .aura-visualizer-shell {
-    width: 240px;
-    height: 240px;
-    margin-bottom: 32px;
+    width: 220px;
+    height: 220px;
+    margin-bottom: 24px;
   }
 
   .aura-mic-button {
-    padding: 12px 24px;
-    font-size: 13px;
+    padding: 11px 22px;
+    font-size: 12px;
   }
 
   .aura-state-label {
-    font-size: 10px;
-    margin-bottom: 24px;
+    font-size: 9px;
+    margin-bottom: 20px;
+  }
+
+  .aura-copy-reply-btn {
+    padding: 9px 14px;
+    font-size: 12px;
   }
 }
 
@@ -1221,40 +1228,49 @@ body {
   }
 
   .aura-chat-panel {
-    max-height: 35vh;
+    max-height: 25vh;
   }
 
   .aura-chat-header {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .aura-chat-title {
-    font-size: 14px;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .aura-chat-clear-btn {
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 20px;
+    padding: 6px 8px;
   }
 
   .aura-chat-messages {
-    padding: 10px;
-    gap: 6px;
+    padding: 8px;
+    gap: 4px;
   }
 
   .aura-message-item {
-    padding: 8px 10px;
-    font-size: 11px;
+    padding: 6px 8px;
+    font-size: 10px;
     border-radius: 8px;
+    margin: 0;
   }
 
   .aura-message-label {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .aura-assistant-panel {
-    padding: 16px 12px;
+    padding: 14px 12px;
   }
 
   .aura-visualizer-shell {
-    width: 200px;
-    height: 200px;
-    margin-bottom: 24px;
+    width: 180px;
+    height: 180px;
+    margin-bottom: 20px;
   }
 
   .aura-mic-button {
@@ -1263,12 +1279,17 @@ body {
   }
 
   .aura-state-label {
-    font-size: 9px;
-    margin-bottom: 20px;
+    font-size: 8px;
+    margin-bottom: 16px;
+  }
+
+  .aura-copy-reply-btn {
+    padding: 8px 12px;
+    font-size: 11px;
   }
 
   .aura-hint-card {
-    padding: 16px;
+    padding: 14px;
   }
 
   .aura-text-card {
