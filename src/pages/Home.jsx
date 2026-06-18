@@ -240,6 +240,20 @@ export default function Home() {
 
   const latestReply = auraReply || conversation.slice().reverse().find((item) => item.role === "assistant")?.text || "";
 
+  const clearConversation = () => {
+    setConversation([]);
+    setAuraReply("");
+    setPhase("idle");
+    setLiveTranscript("");
+    setShowChatPanel(false);
+  };
+
+  useEffect(() => {
+    if (!hasConversation) {
+      setShowChatPanel(false);
+    }
+  }, [hasConversation]);
+
   const copyReply = async () => {
     if (!latestReply) return;
     try {
@@ -284,6 +298,16 @@ export default function Home() {
               <p className="aura-app-subtitle">AI Voice Assistant</p>
             </div>
           </div>
+            {/* Mobile chat toggle (visible on small screens) */}
+            <button
+              className="aura-chat-toggle-btn"
+              type="button"
+              onClick={() => setShowChatPanel((s) => !s)}
+              aria-label="Toggle chat panel"
+              title="Toggle chat"
+            >
+              💬
+            </button>
         </div>
       </header>
 
@@ -309,29 +333,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* Left Panel - Chat History */}
-        {!showChatPanel && (
-          <div className="aura-chat-panel aura-chat-desktop">
-            <div className="aura-chat-header">
-              <h2 className="aura-chat-title">Conversation</h2>
-              {hasConversation && (
-                <button
-                  className="aura-chat-clear-btn"
-                  type="button"
-                  onClick={() => {
-                    setConversation([]);
-                    setAuraReply("");
-                    setPhase("idle");
-                    setLiveTranscript("");
-                  }}
-                  title="Clear all messages"
-                  aria-label="Clear conversation"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <div className="aura-chat-messages">
+        {/* Left Panel - Chat History (Desktop always rendered) */}
+        <div className="aura-chat-panel aura-chat-desktop">
+          <div className="aura-chat-header">
+            <h2 className="aura-chat-title">Conversation</h2>
+          </div>
+          <div className="aura-chat-messages">
               {conversation.length === 0 ? (
                 <div className="aura-chat-empty">
                   <div className="aura-empty-icon">💬</div>
@@ -368,29 +375,12 @@ export default function Home() {
               </div>
             )}
           </div>
-        )}
 
-        {/* Mobile Chat Panel (Hidden by default) */}
+        {/* Mobile Chat Panel (only show when sidebar is NOT open) */}
         {showChatPanel && (
           <div className="aura-chat-panel aura-chat-mobile">
             <div className="aura-chat-header">
               <h2 className="aura-chat-title">Conversation</h2>
-              {hasConversation && (
-                <button
-                  className="aura-chat-clear-btn"
-                  type="button"
-                  onClick={() => {
-                    setConversation([]);
-                    setAuraReply("");
-                    setPhase("idle");
-                    setLiveTranscript("");
-                  }}
-                  title="Clear all messages"
-                  aria-label="Clear conversation"
-                >
-                  ✕
-                </button>
-              )}
             </div>
             <div className="aura-chat-messages">
               {conversation.length === 0 ? (
