@@ -109,14 +109,59 @@ export default function Home() {
     };
   }, [phase]);
 
-  const speakReply = (reply) => {
+  const speakReply = async (reply) => {
     const speechText = buildSpeechText(reply);
-    if (!speechText || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const speech = new SpeechSynthesisUtterance(speechText);
-    speech.onstart = () => setPhase("speaking");
-    speech.onend = () => setPhase("responded");
-    window.speechSynthesis.speak(speech);
+    if (!speechText) return;
+
+    // Try ElevenLabs via our backend first
+    setPhase("speaking");
+    try {
+      const res = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: speechText }),
+      });
+
+      if (!res.ok) throw new Error(`Voice API error ${res.status}`);
+
+      const buffer = await res.arrayBuffer();
+      const blob = new Blob([buffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => {
+        setPhase("responded");
+        URL.revokeObjectURL(url);
+      };
+      // play may return a promise which can reject if autoplay blocked
+      try {
+        await audio.play();
+      } catch (playErr) {
+        console.warn("Audio play failed, falling back to speechSynthesis", playErr);
+        // fallback to speechSynthesis if available
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          const speech = new SpeechSynthesisUtterance(speechText);
+          speech.onend = () => setPhase("responded");
+          window.speechSynthesis.speak(speech);
+        } else {
+          setPhase("responded");
+        }
+      }
+      return;
+    } catch (err) {
+      console.error("ElevenLabs TTS failed, falling back to speechSynthesis", err);
+    }
+
+    // Final fallback to browser TTS
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const speech = new SpeechSynthesisUtterance(speechText);
+      speech.onstart = () => setPhase("speaking");
+      speech.onend = () => setPhase("responded");
+      window.speechSynthesis.speak(speech);
+    } else {
+      setPhase("responded");
+    }
   };
 
   const sendMessage = async (message) => {
