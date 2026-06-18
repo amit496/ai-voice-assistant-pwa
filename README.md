@@ -26,8 +26,12 @@ Set these in Vercel or a local `.env` file:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=groq/compound
+GROQ_MODEL=llama-3.3-70b-versatile
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-ELEVENLABS_VOICE_ID=your_voice_id_here
+ELEVENLABS_AGENT_ID=agent_your_agent_id_here
+ELEVENLABS_VOICE_ID=EXAVITQu4vr4xnSDxMaL
+ELEVENLABS_AGENT_ENABLED=true
 ```
+
+When `ELEVENLABS_AGENT_ID` is set, Nova uses the ElevenLabs Conversational AI agent (`@elevenlabs/react`) for live voice chat. Otherwise it falls back to Groq + TTS.
 

@@ -1,5 +1,10 @@
+import { ConversationProvider } from "@elevenlabs/react";
 import Home from "./pages/Home";
 
 export default function App() {
-  return <Home />;
+  return (
+    <ConversationProvider>
+      <Home />
+    </ConversationProvider>
+  );
 }

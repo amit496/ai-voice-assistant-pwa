@@ -2,6 +2,13 @@ import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import axios from "axios";
+import {
+  getAgentId,
+  getElevenLabsModel,
+  isAgentEnabled,
+  isElevenLabsEnabled,
+  parseElevenLabsError,
+} from "../api/elevenlabsShared.js";
 
 const VOICE_SYSTEM_PROMPT =
   "You are Nova, a voice-first AI assistant. Reply in short, plain sentences only. No markdown, no tables, no bullet lists, no headings. Keep answers to 2-4 brief sentences suitable for speaking aloud. Be direct and conversational.";
@@ -40,16 +47,58 @@ console.log("Server config", {
   hasGroqKey: !!GROQ_KEY,
   hasElevenLabsKey: !!ELEVENLABS_API_KEY,
   hasElevenLabsVoiceId: !!ELEVENLABS_VOICE_ID,
+  hasAgentId: !!getAgentId(),
+  agentEnabled: isAgentEnabled(),
 });
 
 // Simple health
 app.get("/", (req, res) => res.json({ ok: true }));
 
 app.get("/config", (req, res) => {
+  const agentEnabled = isAgentEnabled();
   res.json({
     groqModel: GROQ_MODEL,
-    elevenLabsEnabled: Boolean(ELEVENLABS_API_KEY && ELEVENLABS_VOICE_ID),
+    elevenLabsEnabled: isElevenLabsEnabled(),
+    elevenLabsModel: getElevenLabsModel(),
+    agentEnabled,
+    agentId: agentEnabled ? getAgentId() : null,
+    voiceMode: agentEnabled ? "agent" : isElevenLabsEnabled() ? "tts" : "browser",
   });
+});
+
+app.get("/agent-session", async (req, res) => {
+  const agentId = getAgentId();
+  if (!isAgentEnabled()) {
+    return res.status(503).json({ error: "ElevenLabs agent is not configured." });
+  }
+
+  try {
+    const response = await axios.get(
+      "https://api.elevenlabs.io/v1/convai/conversation/get-signed-url",
+      {
+        params: { agent_id: agentId },
+        headers: { "xi-api-key": ELEVENLABS_API_KEY },
+      }
+    );
+
+    return res.json({ signedUrl: response.data.signed_url, agentId });
+  } catch (err) {
+    const status = err?.response?.status;
+    const message = err?.response?.data?.detail?.message || err.message;
+    const missingConvaiPermission =
+      status === 401 && String(message).toLowerCase().includes("convai");
+
+    if (missingConvaiPermission || status === 401) {
+      return res.json({
+        agentId,
+        usePublicAgent: true,
+        note: "Using public agent mode. Enable ConvAI permission on your API key for signed URLs.",
+      });
+    }
+
+    console.error("/agent-session error", status, message);
+    return res.status(status || 500).json({ error: message || "Failed to create agent session" });
+  }
 });
 
 app.post("/voice", async (req, res) => {
@@ -58,6 +107,13 @@ app.post("/voice", async (req, res) => {
   if (!text) {
     console.error("/voice missing text");
     return res.status(400).json({ error: "missing text" });
+  }
+
+  if (!isElevenLabsEnabled()) {
+    return res.status(503).json({
+      error: "ElevenLabs is disabled. Set ELEVENLABS_ENABLED=true and API keys to enable.",
+      skipElevenLabs: true,
+    });
   }
 
   if (!ELEVENLABS_API_KEY || !ELEVENLABS_VOICE_ID) {
@@ -69,12 +125,13 @@ app.post("/voice", async (req, res) => {
   }
 
   try {
-    console.log("/voice calling ElevenLabs", { voiceId: ELEVENLABS_VOICE_ID });
+    const model = getElevenLabsModel();
+    console.log("/voice calling ElevenLabs", { voiceId: ELEVENLABS_VOICE_ID, model });
     const response = await axios.post(
       `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
       {
         text,
-        model: "eleven_monolingual_v1",
+        model_id: model,
         voice_settings: { stability: 0.65, similarity_boost: 0.75 },
       },
       {
@@ -91,8 +148,9 @@ app.post("/voice", async (req, res) => {
     res.setHeader("Content-Type", "audio/mpeg");
     res.send(response.data);
   } catch (err) {
-    console.error("/voice ElevenLabs error", err?.response?.status, err?.response?.data || err.message || err);
-    res.status(500).json({ error: err?.response?.data?.error?.message || "ElevenLabs request failed" });
+    const { status, error, skipElevenLabs } = parseElevenLabsError(err);
+    console.error("/voice ElevenLabs error", status, error);
+    res.status(status).json({ error, skipElevenLabs });
   }
 });
 

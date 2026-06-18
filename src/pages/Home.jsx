@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import MarkdownMessage, { buildSpeechText } from "../components/MarkdownMessage";
 import useLocalStorage from "../hooks/useLocalStorage";
+import useNovaAgent from "../hooks/useNovaAgent";
 import { trimMessage } from "../utils/messageLimits";
 import { getInstallInstructions, isStandaloneApp } from "../utils/pwaInstall";
 
 const BAR_COUNT = 17;
 const BAR_HEIGHTS = [12, 22, 34, 44, 38, 28, 18, 14, 20, 32, 42, 36, 26, 16, 12, 24, 40];
 const IDLE_BAR_HEIGHTS = [...BAR_HEIGHTS];
+const ELEVENLABS_SKIP_KEY = "nova-skip-elevenlabs";
+
+const readElevenLabsPreference = () => {
+  if (typeof sessionStorage === "undefined") return true;
+  return sessionStorage.getItem(ELEVENLABS_SKIP_KEY) !== "1";
+};
 
 const detectSpeechSupport = () =>
   typeof window !== "undefined" &&
@@ -31,6 +38,7 @@ export default function Home() {
   const [isOnline, setIsOnline] = useState(
     () => typeof navigator !== "undefined" && navigator.onLine
   );
+  const [useElevenLabs, setUseElevenLabs] = useState(readElevenLabsPreference);
   const recognitionRef = useRef(null);
   const processingRef = useRef(false);
   const audioContextRef = useRef(null);
@@ -38,10 +46,31 @@ export default function Home() {
   const mediaStreamRef = useRef(null);
   const rafRef = useRef(null);
 
-  const isActive = phase === "listening" || phase === "thinking" || phase === "speaking";
   const hasConversation = conversation.length > 0;
+
+  const {
+    agentEnabled,
+    agentConnected,
+    agentConnecting,
+    toggleAgentSession,
+    stopAgentSession,
+    sendAgentText,
+    updateAgentBars,
+    resetAgentConversation,
+  } = useNovaAgent({
+    setConversation,
+    setAuraReply,
+    setLiveTranscript,
+    setPhase,
+  });
+  const isActive =
+    phase === "listening" ||
+    phase === "thinking" ||
+    phase === "speaking" ||
+    agentConnected ||
+    agentConnecting;
   const isChatPanelVisible = hasConversation && showChatPanel;
-  const isVoiceReactive = phase === "listening";
+  const isVoiceReactive = phase === "listening" || (agentConnected && !agentConnecting);
 
   const stopAudioVisualizer = () => {
     if (rafRef.current) {
@@ -59,9 +88,24 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (phase !== "listening") return undefined;
+    if (!isActive && !agentConnected) return undefined;
 
     let cancelled = false;
+
+    if (agentConnected) {
+      const animateAgentBars = () => {
+        if (cancelled) return;
+        updateAgentBars(setBarLevels, IDLE_BAR_HEIGHTS);
+        rafRef.current = requestAnimationFrame(animateAgentBars);
+      };
+      rafRef.current = requestAnimationFrame(animateAgentBars);
+      return () => {
+        cancelled = true;
+        stopAudioVisualizer();
+      };
+    }
+
+    if (phase !== "listening") return undefined;
 
     // Web Speech API already owns the mic on mobile Chrome — a second getUserMedia()
     // stream triggers: "Speech Recognition ... cannot record now as Chrome is recording".
@@ -154,14 +198,58 @@ export default function Home() {
       cancelled = true;
       stopAudioVisualizer();
     };
-  }, [phase, speechSupported]);
+  }, [phase, speechSupported, agentConnected, isActive, updateAgentBars]);
+
+  const disableElevenLabs = () => {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(ELEVENLABS_SKIP_KEY, "1");
+    }
+    setUseElevenLabs(false);
+  };
+
+  const speakWithBrowser = (speechText) => {
+    if (!window.speechSynthesis) {
+      setPhase("responded");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(speechText);
+    speech.onstart = () => setPhase("speaking");
+    speech.onend = () => setPhase("responded");
+    window.speechSynthesis.speak(speech);
+  };
+
+  useEffect(() => {
+    if (!useElevenLabs) return undefined;
+
+    let cancelled = false;
+    fetch("/api/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        if (data.elevenLabsEnabled === false) {
+          disableElevenLabs();
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [useElevenLabs]);
 
   const speakReply = async (reply) => {
     const speechText = buildSpeechText(reply);
     if (!speechText) return;
 
-    // Try ElevenLabs via our backend first
     setPhase("speaking");
+
+    if (!useElevenLabs) {
+      speakWithBrowser(speechText);
+      return;
+    }
+
     try {
       const res = await fetch("/api/voice", {
         method: "POST",
@@ -169,7 +257,14 @@ export default function Home() {
         body: JSON.stringify({ text: speechText }),
       });
 
-      if (!res.ok) throw new Error(`Voice API error ${res.status}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.skipElevenLabs) {
+          disableElevenLabs();
+        }
+        speakWithBrowser(speechText);
+        return;
+      }
 
       const buffer = await res.arrayBuffer();
       const blob = new Blob([buffer], { type: "audio/mpeg" });
@@ -179,35 +274,15 @@ export default function Home() {
         setPhase("responded");
         URL.revokeObjectURL(url);
       };
-      // play may return a promise which can reject if autoplay blocked
+
       try {
         await audio.play();
-      } catch (playErr) {
-        console.warn("Audio play failed, falling back to speechSynthesis", playErr);
-        // fallback to speechSynthesis if available
-        if (window.speechSynthesis) {
-          window.speechSynthesis.cancel();
-          const speech = new SpeechSynthesisUtterance(speechText);
-          speech.onend = () => setPhase("responded");
-          window.speechSynthesis.speak(speech);
-        } else {
-          setPhase("responded");
-        }
+      } catch {
+        URL.revokeObjectURL(url);
+        speakWithBrowser(speechText);
       }
-      return;
-    } catch (err) {
-      console.error("ElevenLabs TTS failed, falling back to speechSynthesis", err);
-    }
-
-    // Final fallback to browser TTS
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const speech = new SpeechSynthesisUtterance(speechText);
-      speech.onstart = () => setPhase("speaking");
-      speech.onend = () => setPhase("responded");
-      window.speechSynthesis.speak(speech);
-    } else {
-      setPhase("responded");
+    } catch {
+      speakWithBrowser(speechText);
     }
   };
 
@@ -259,8 +334,17 @@ export default function Home() {
     setPhase(hasConversation ? "responded" : "idle");
   };
 
-  const startVoice = () => {
+  const startVoice = async () => {
     window.speechSynthesis?.cancel();
+
+    if (agentEnabled) {
+      try {
+        await toggleAgentSession();
+      } catch (err) {
+        alert(err.message || "Could not start Nova voice agent. Check microphone permission and agent settings.");
+      }
+      return;
+    }
 
     if (phase === "listening") {
       stopListening();
@@ -340,6 +424,21 @@ export default function Home() {
     event.preventDefault();
     const trimmed = trimMessage(inputText);
     if (!trimmed) return;
+
+    if (agentEnabled) {
+      if (!agentConnected) {
+        try {
+          await toggleAgentSession();
+        } catch (err) {
+          alert(err.message || "Could not connect to Nova agent.");
+          return;
+        }
+      }
+      sendAgentText(trimmed);
+      setInputText("");
+      return;
+    }
+
     await sendMessage(trimmed);
     setInputText("");
   };
@@ -347,6 +446,7 @@ export default function Home() {
   const latestReply = auraReply || conversation.slice().reverse().find((item) => item.role === "assistant")?.text || "";
 
   const clearConversation = () => {
+    resetAgentConversation();
     setConversation([]);
     setAuraReply("");
     setPhase("idle");
@@ -425,13 +525,21 @@ export default function Home() {
     }
   };
 
-  const statusText = {
-    idle: "Tap the mic to speak",
-    listening: "Listening...",
-    thinking: "Thinking...",
-    speaking: "Speaking...",
-    responded: "Tap the mic to speak",
-  }[phase];
+  const statusText = agentConnected
+    ? {
+        listening: "Nova is listening...",
+        speaking: "Nova is speaking...",
+        thinking: "Connecting to Nova...",
+        responded: "Live conversation ended",
+        idle: "Live with Nova",
+      }[phase] || "Live with Nova"
+    : {
+        idle: agentEnabled ? "Tap to start live conversation" : "Tap the mic to speak",
+        listening: "Listening...",
+        thinking: "Thinking...",
+        speaking: "Speaking...",
+        responded: "Tap the mic to speak",
+      }[phase];
 
   return (
     <main className="aura-screen">
@@ -457,7 +565,9 @@ export default function Home() {
             </div>
             <div className="aura-logo-text">
               <h1 className="aura-app-title">Nova</h1>
-              <p className="aura-app-subtitle">AI Voice Assistant</p>
+              <p className="aura-app-subtitle">
+                {agentEnabled ? "ElevenLabs Conversational Agent" : "AI Voice Assistant"}
+              </p>
             </div>
           </div>
             {/* Mobile chat toggle (visible on small screens) */}
@@ -703,10 +813,14 @@ export default function Home() {
           </div>
         </div>
 
-        {phase === "listening" ? (
-          <button className="aura-stop-button" onClick={stopListening} type="button">
+        {agentConnected || phase === "listening" ? (
+          <button
+            className="aura-stop-button"
+            onClick={agentEnabled ? stopAgentSession : stopListening}
+            type="button"
+          >
             <span className="aura-stop-icon" aria-hidden="true" />
-            Stop
+            {agentEnabled ? "End" : "Stop"}
           </button>
         ) : (
           <button
@@ -733,11 +847,15 @@ export default function Home() {
               <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
               <rect x="9" y="2" width="6" height="13" rx="3" />
             </svg>
-            {showTextForm || !speechSupported ? "Type to ask Nova" : "Tap to ask Nova"}
+            {agentEnabled
+              ? "Start live chat"
+              : showTextForm || !speechSupported
+                ? "Type to ask Nova"
+                : "Tap to ask Nova"}
           </button>
         )}
 
-        {phase === "listening" && (
+        {(phase === "listening" || (agentConnected && liveTranscript)) && (
           <div className="aura-transcript-strip">
             <span className="aura-transcript-label">You</span>
             <p className="aura-transcript-text">
