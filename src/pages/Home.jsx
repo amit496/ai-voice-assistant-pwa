@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import MarkdownMessage, { buildSpeechText } from "../components/MarkdownMessage";
+import useLocalStorage from "../hooks/useLocalStorage";
 import { trimMessage } from "../utils/messageLimits";
 
 const BAR_COUNT = 17;
@@ -15,7 +16,7 @@ export default function Home() {
   const [speechSupported] = useState(detectSpeechSupport);
   const [showTextForm, setShowTextForm] = useState(() => !detectSpeechSupport());
   const [inputText, setInputText] = useState("");
-  const [userMessage, setUserMessage] = useState("");
+  const [conversation, setConversation] = useLocalStorage("nova-chat-history", []);
   const [auraReply, setAuraReply] = useState("");
   const [liveTranscript, setLiveTranscript] = useState("");
   const [barLevels, setBarLevels] = useState(IDLE_BAR_HEIGHTS);
@@ -27,7 +28,7 @@ export default function Home() {
   const rafRef = useRef(null);
 
   const isActive = phase === "listening" || phase === "thinking" || phase === "speaking";
-  const hasConversation = Boolean(userMessage && auraReply);
+  const hasConversation = conversation.length > 0;
   const isVoiceReactive = phase === "listening";
 
   const stopAudioVisualizer = () => {
@@ -121,7 +122,7 @@ export default function Home() {
     const safeMessage = trimMessage(message);
     if (!safeMessage) return;
 
-    setUserMessage(safeMessage);
+    setConversation((prev) => [...prev, { role: "user", text: safeMessage }]);
     setLiveTranscript("");
     window.speechSynthesis?.cancel();
     setPhase("thinking");
@@ -140,16 +141,20 @@ export default function Home() {
             ? "Your question is too long. Please ask a shorter question."
             : "Something went wrong. Try again.");
         setAuraReply(errorReply);
+        setConversation((prev) => [...prev, { role: "assistant", text: errorReply }]);
         setPhase("responded");
         return;
       }
       const reply = data.reply || "No response from Nova.";
       setAuraReply(reply);
+      setConversation((prev) => [...prev, { role: "assistant", text: reply }]);
       setPhase("responded");
       speakReply(reply);
     } catch (err) {
       console.error(err);
-      setAuraReply("Something went wrong. Try again.");
+      const errorReply = "Something went wrong. Try again.";
+      setAuraReply(errorReply);
+      setConversation((prev) => [...prev, { role: "assistant", text: errorReply }]);
       setPhase("responded");
     }
   };
@@ -232,6 +237,24 @@ export default function Home() {
     setInputText("");
   };
 
+  const clearConversation = () => {
+    setConversation([]);
+    setAuraReply("");
+    setPhase("idle");
+    setLiveTranscript("");
+  };
+
+  const latestReply = auraReply || conversation.slice().reverse().find((item) => item.role === "assistant")?.text || "";
+
+  const copyReply = async () => {
+    if (!latestReply) return;
+    try {
+      await navigator.clipboard.writeText(latestReply);
+    } catch (err) {
+      console.error("Copy failed", err);
+    }
+  };
+
   const statusText = {
     idle: "Tap the mic to speak",
     listening: "Listening...",
@@ -252,14 +275,60 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="aura-body">
-        <span
-          className={`aura-state-label ${
-            phase === "idle" || phase === "responded" ? "aura-state-label-muted" : "aura-state-label-active"
-          }`}
-        >
-          {statusText}
-        </span>
+      <div className="aura-container">
+        {/* Left Sidebar - Conversation History */}
+        {hasConversation && (
+          <aside className="aura-sidebar">
+            <div className="aura-sidebar-header">
+              <h3 className="aura-sidebar-title">Conversation</h3>
+              <button
+                className="aura-sidebar-clear"
+                type="button"
+                onClick={clearConversation}
+                title="Clear conversation"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="aura-sidebar-content">
+              {conversation.map((entry, index) => (
+                <div
+                  key={`${entry.role}-${index}-${entry.text.slice(0, 20)}`}
+                  className={`aura-message-row aura-message-row-${entry.role}`}
+                >
+                  <span className={`aura-conversation-label aura-conversation-label-${entry.role}`}>
+                    {entry.role === "user" ? "You" : "Nova"}
+                  </span>
+                  {entry.role === "assistant" ? (
+                    <MarkdownMessage content={entry.text} />
+                  ) : (
+                    <p className="aura-conversation-text">{entry.text}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            {latestReply && (
+              <button
+                className="aura-sidebar-copy"
+                type="button"
+                onClick={copyReply}
+                title="Copy last reply"
+              >
+                Copy last reply
+              </button>
+            )}
+          </aside>
+        )}
+
+        {/* Main Content - Mic and Controls */}
+        <div className="aura-body">
+          <span
+            className={`aura-state-label ${
+              phase === "idle" || phase === "responded" ? "aura-state-label-muted" : "aura-state-label-active"
+            }`}
+          >
+            {statusText}
+          </span>
 
         <div className={`aura-visualizer-shell ${isActive ? "aura-visualizer-live" : ""}`}>
           <div className="aura-visualizer-rings" aria-hidden="true">
@@ -328,19 +397,6 @@ export default function Home() {
           </div>
         )}
 
-        {hasConversation && phase !== "listening" && (
-          <div className="aura-conversation-card">
-            <div className="aura-conversation-block">
-              <span className="aura-conversation-label aura-conversation-label-you">You</span>
-              <p className="aura-conversation-text">{userMessage}</p>
-            </div>
-            <div className="aura-conversation-block">
-              <span className="aura-conversation-label aura-conversation-label-aura">Nova</span>
-              <MarkdownMessage content={auraReply} />
-            </div>
-          </div>
-        )}
-
         {phase === "idle" && !hasConversation && (
           <div className="aura-hint-card">
             <svg
@@ -383,6 +439,7 @@ export default function Home() {
             </form>
           </div>
         )}
+      </div>
       </div>
 
       <div className="aura-footer">Nova · voice-first AI</div>
