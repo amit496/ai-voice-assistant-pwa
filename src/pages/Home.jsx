@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import MarkdownMessage, { buildSpeechText } from "../components/MarkdownMessage";
 import useLocalStorage from "../hooks/useLocalStorage";
 import { trimMessage } from "../utils/messageLimits";
+import { getInstallInstructions, isStandaloneApp } from "../utils/pwaInstall";
 
 const BAR_COUNT = 17;
 const BAR_HEIGHTS = [12, 22, 34, 44, 38, 28, 18, 14, 20, 32, 42, 36, 26, 16, 12, 24, 40];
@@ -21,6 +22,15 @@ export default function Home() {
   const [liveTranscript, setLiveTranscript] = useState("");
   const [barLevels, setBarLevels] = useState(IDLE_BAR_HEIGHTS);
   const [showChatPanel, setShowChatPanel] = useState(false); // Mobile tab state
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [installStatus, setInstallStatus] = useState(() =>
+    isStandaloneApp() ? "installed" : null
+  );
+  const [installInstructions] = useState(() => getInstallInstructions());
+  const [isOnline, setIsOnline] = useState(
+    () => typeof navigator !== "undefined" && navigator.onLine
+  );
   const recognitionRef = useRef(null);
   const processingRef = useRef(false);
   const audioContextRef = useRef(null);
@@ -30,6 +40,7 @@ export default function Home() {
 
   const isActive = phase === "listening" || phase === "thinking" || phase === "speaking";
   const hasConversation = conversation.length > 0;
+  const isChatPanelVisible = hasConversation && showChatPanel;
   const isVoiceReactive = phase === "listening";
 
   const stopAudioVisualizer = () => {
@@ -97,7 +108,14 @@ export default function Home() {
 
         rafRef.current = requestAnimationFrame(updateBars);
       } catch (err) {
-        console.error(err);
+        console.error("Microphone access error:", err);
+        if (err.name === "NotAllowedError") {
+          console.warn("Microphone permission denied by user");
+        } else if (err.name === "NotFoundError") {
+          console.warn("No microphone device found");
+        } else if (err.name === "NotReadableError") {
+          console.warn("Microphone is being used by another application");
+        }
       }
     };
 
@@ -247,10 +265,24 @@ export default function Home() {
       setPhase((current) => (current === "listening" ? "idle" : current));
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error:", event.error);
       recognitionRef.current = null;
       setShowTextForm(true);
       setPhase("idle");
+      
+      // Show user-friendly error messages
+      if (event.error === "no-speech") {
+        alert("No speech detected. Please try again and speak clearly.");
+      } else if (event.error === "network") {
+        alert("Network error. Please check your internet connection.");
+      } else if (event.error === "permission-denied") {
+        alert("Microphone permission denied. Please enable microphone access for this app.");
+      } else if (event.error === "not-allowed") {
+        alert("Speech Recognition not allowed. Please grant microphone permission.");
+      } else {
+        alert(`Speech error: ${event.error}. Please try again.`);
+      }
     };
 
     recognition.onresult = (event) => {
@@ -294,10 +326,66 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (!hasConversation) {
-      setShowChatPanel(false);
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setDeferredPrompt(event);
+    };
+
+    const handleAppInstalled = () => {
+      setInstallStatus("installed");
+      setShowInstallPrompt(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const openInstallPrompt = () => {
+    if (installStatus === "installed") return;
+    setShowInstallPrompt(true);
+  };
+
+  const handleInstallClick = async () => {
+    if (installStatus === "installed") return;
+
+    if (!deferredPrompt) {
+      openInstallPrompt();
+      return;
     }
-  }, [hasConversation]);
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setInstallStatus("installed");
+    }
+    setShowInstallPrompt(false);
+    setDeferredPrompt(null);
+  };
+
+  const closeInstallPrompt = () => {
+    setShowInstallPrompt(false);
+  };
+
+  const isInstalled = installStatus === "installed";
+  const hasNativeInstall = Boolean(deferredPrompt);
+  const canShowInstallUi = !isInstalled;
 
   const copyReply = async () => {
     if (!latestReply) return;
@@ -344,17 +432,78 @@ export default function Home() {
             </div>
           </div>
             {/* Mobile chat toggle (visible on small screens) */}
-            <button
-              className="aura-chat-toggle-btn"
-              type="button"
-              onClick={() => setShowChatPanel((s) => !s)}
-              aria-label="Toggle chat panel"
-              title="Toggle chat"
-            >
-              💬
-            </button>
+            <div className="aura-header-actions">
+              {canShowInstallUi && (
+                <button className="aura-install-header-btn" type="button" onClick={handleInstallClick}>
+                  Install Nova
+                </button>
+              )}
+              {!isOnline && (
+                <span className="aura-offline-badge" title="You are offline">
+                  Offline
+                </span>
+              )}
+              <button
+                className="aura-chat-toggle-btn"
+                type="button"
+                onClick={() => setShowChatPanel((s) => !s)}
+                aria-label="Toggle chat panel"
+                title="Toggle chat"
+              >
+                💬
+              </button>
+            </div>
         </div>
       </header>
+
+      {showInstallPrompt && canShowInstallUi && (
+        <div className="aura-install-overlay" role="dialog" aria-modal="true">
+          <div className="aura-install-card">
+            <div className="aura-install-card-top">
+              <div>
+                <p className="aura-install-pretitle">Progressive Web App</p>
+                <h2 className="aura-install-title">
+                  {hasNativeInstall ? "Install Nova on your device" : installInstructions.title}
+                </h2>
+              </div>
+              <button className="aura-install-close" type="button" onClick={closeInstallPrompt} aria-label="Close install prompt">
+                ×
+              </button>
+            </div>
+            {hasNativeInstall ? (
+              <>
+                <p className="aura-install-copy">
+                  Add Nova to your home screen for one-tap access. The app shell works offline; voice features need an internet connection.
+                </p>
+                <div className="aura-install-actions">
+                  <button className="aura-install-button" type="button" onClick={handleInstallClick}>
+                    Install Nova
+                  </button>
+                  <button className="aura-install-secondary" type="button" onClick={closeInstallPrompt}>
+                    Maybe later
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="aura-install-copy">
+                  Your browser has not shown the native install prompt yet. Follow these steps:
+                </p>
+                <ol className="aura-install-steps">
+                  {installInstructions.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+                <div className="aura-install-actions">
+                  <button className="aura-install-secondary" type="button" onClick={closeInstallPrompt}>
+                    Got it
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main Content - 50/50 Layout (Desktop) / Tabs (Mobile) */}
       <div className="aura-main-content">
@@ -362,14 +511,14 @@ export default function Home() {
         {hasConversation && (
           <div className="aura-mobile-tabs">
             <button
-              className={`aura-tab ${!showChatPanel ? "aura-tab-active" : ""}`}
+              className={`aura-tab ${!isChatPanelVisible ? "aura-tab-active" : ""}`}
               onClick={() => setShowChatPanel(false)}
               type="button"
             >
               🎤 Mic
             </button>
             <button
-              className={`aura-tab ${showChatPanel ? "aura-tab-active" : ""}`}
+              className={`aura-tab ${isChatPanelVisible ? "aura-tab-active" : ""}`}
               onClick={() => setShowChatPanel(true)}
               type="button"
             >
@@ -382,6 +531,19 @@ export default function Home() {
         <div className="aura-chat-panel aura-chat-desktop">
           <div className="aura-chat-header">
             <h2 className="aura-chat-title">Conversation</h2>
+            {hasConversation && (
+              <div className="aura-chat-header-actions">
+                <button
+                  className="aura-chat-clear-btn"
+                  type="button"
+                  onClick={clearConversation}
+                  aria-label="Clear conversation"
+                  title="Clear conversation"
+                >
+                  🗑️
+                </button>
+              </div>
+            )}
           </div>
           <div className="aura-chat-messages">
               {conversation.length === 0 ? (
@@ -422,10 +584,21 @@ export default function Home() {
           </div>
 
         {/* Mobile Chat Panel (only show when sidebar is NOT open) */}
-        {showChatPanel && (
+        {isChatPanelVisible && (
           <div className="aura-chat-panel aura-chat-mobile">
             <div className="aura-chat-header">
               <h2 className="aura-chat-title">Conversation</h2>
+              <div className="aura-chat-header-actions">
+                <button
+                  className="aura-chat-clear-btn"
+                  type="button"
+                  onClick={clearConversation}
+                  aria-label="Clear conversation"
+                  title="Clear conversation"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
             <div className="aura-chat-messages">
               {conversation.length === 0 ? (

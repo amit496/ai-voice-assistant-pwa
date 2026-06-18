@@ -174,13 +174,45 @@ body {
   gap: 2px;
 }
 
-.aura-app-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1d1d1f;
-  letter-spacing: -0.01em;
-}
+  .aura-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+
+  .aura-install-header-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 59, 48, 0.16);
+    background: rgba(255, 255, 255, 0.94);
+    color: #111827;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+
+  .aura-install-header-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  .aura-offline-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 149, 0, 0.12);
+    color: #c2410c;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
 
 .aura-app-subtitle {
   margin: 0;
@@ -808,6 +840,130 @@ body {
   height: 12px;
   border-radius: 2px;
   background: #1d1d1f;
+}
+
+.aura-install-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(10px);
+  padding: 24px;
+}
+
+.aura-install-card {
+  width: min(480px, 100%);
+  background: white;
+  border-radius: 28px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  padding: 28px 26px;
+}
+
+.aura-install-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.aura-install-pretitle {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #7b85a0;
+}
+
+.aura-install-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.aura-install-close {
+  border: none;
+  background: rgba(241, 245, 249, 0.8);
+  color: #374151;
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.aura-install-close:hover {
+  background: rgba(226, 232, 240, 1);
+}
+
+.aura-install-copy {
+  margin: 0 0 24px;
+  color: #556179;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.aura-install-steps {
+  margin: 0 0 20px;
+  padding-left: 20px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.aura-install-steps li + li {
+  margin-top: 8px;
+}
+
+.aura-install-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.aura-install-button,
+.aura-install-secondary {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 14px 20px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.aura-install-button {
+  background: #2d68ff;
+  color: white;
+  border-color: #2d68ff;
+}
+
+.aura-install-button:hover {
+  background: #244fdb;
+}
+
+.aura-install-secondary {
+  background: white;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.aura-install-secondary:hover {
+  background: #f8fafc;
+}
+
+.aura-install-success {
+  margin-top: 18px;
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .aura-transcript-strip {
