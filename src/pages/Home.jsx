@@ -264,64 +264,93 @@ export default function Home() {
   }[phase];
 
   return (
-    <main className={`aura-screen ${hasConversation ? "aura-screen-chat" : ""}`}>
+    <main className="aura-screen">
       <div className="aura-glow aura-glow-top" />
       <div className="aura-glow aura-glow-right" />
 
-      <header className="aura-header">
-        <div className="aura-logo">
-          <span className="aura-logo-mark" />
-          Nova
+      {/* Professional Header */}
+      <header className="aura-app-header">
+        <div className="aura-header-content">
+          <div className="aura-logo-section">
+            <div className="aura-logo-icon">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ff3b30" />
+                    <stop offset="50%" stopColor="#ff2a68" />
+                    <stop offset="100%" stopColor="#ff9b00" />
+                  </linearGradient>
+                </defs>
+                <rect width="32" height="32" rx="10" fill="url(#logoGradient)" />
+                <path d="M16 8v12M12 14h8" stroke="white" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="aura-logo-text">
+              <h1 className="aura-app-title">Nova</h1>
+              <p className="aura-app-subtitle">AI Voice Assistant</p>
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="aura-container">
-        {/* Left Sidebar - Conversation History */}
-        {hasConversation && (
-          <aside className="aura-sidebar">
-            <div className="aura-sidebar-header">
-              <h3 className="aura-sidebar-title">Conversation</h3>
+      {/* Main Content - 50/50 Layout */}
+      <div className="aura-main-content">
+        {/* Left Panel - Chat History */}
+        <div className="aura-chat-panel">
+          <div className="aura-chat-header">
+            <h2 className="aura-chat-title">Conversation</h2>
+            {hasConversation && (
               <button
-                className="aura-sidebar-clear"
+                className="aura-chat-clear-btn"
                 type="button"
                 onClick={clearConversation}
                 title="Clear conversation"
               >
                 ✕
               </button>
-            </div>
-            <div className="aura-sidebar-content">
-              {conversation.map((entry, index) => (
+            )}
+          </div>
+          <div className="aura-chat-messages">
+            {conversation.length === 0 ? (
+              <div className="aura-chat-empty">
+                <div className="aura-empty-icon">💬</div>
+                <p>No messages yet. Start by tapping the mic!</p>
+              </div>
+            ) : (
+              conversation.map((entry, index) => (
                 <div
                   key={`${entry.role}-${index}-${entry.text.slice(0, 20)}`}
-                  className={`aura-message-row aura-message-row-${entry.role}`}
+                  className={`aura-message-item aura-message-${entry.role}`}
                 >
-                  <span className={`aura-conversation-label aura-conversation-label-${entry.role}`}>
-                    {entry.role === "user" ? "You" : "Nova"}
-                  </span>
+                  <div className="aura-message-label">
+                    {entry.role === "user" ? "👤 You" : "🤖 Nova"}
+                  </div>
                   {entry.role === "assistant" ? (
                     <MarkdownMessage content={entry.text} />
                   ) : (
-                    <p className="aura-conversation-text">{entry.text}</p>
+                    <p className="aura-message-text">{entry.text}</p>
                   )}
                 </div>
-              ))}
-            </div>
-            {latestReply && (
+              ))
+            )}
+          </div>
+          {hasConversation && latestReply && (
+            <div className="aura-chat-footer">
               <button
-                className="aura-sidebar-copy"
+                className="aura-copy-reply-btn"
                 type="button"
                 onClick={copyReply}
                 title="Copy last reply"
               >
-                Copy last reply
+                📋 Copy Reply
               </button>
-            )}
-          </aside>
-        )}
+            </div>
+          )}
+        </div>
 
-        {/* Main Content - Mic and Controls */}
-        <div className="aura-body">
+        {/* Right Panel - Assistant/Mic Controls */}
+        <div className="aura-assistant-panel">
+          <div className="aura-body">
           <span
             className={`aura-state-label ${
               phase === "idle" || phase === "responded" ? "aura-state-label-muted" : "aura-state-label-active"
@@ -439,6 +468,7 @@ export default function Home() {
             </form>
           </div>
         )}
+        </div>
       </div>
       </div>
 
