@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import MarkdownMessage, { buildSpeechText } from "../components/MarkdownMessage";
 import useLocalStorage from "../hooks/useLocalStorage";
 import useNovaAgent from "../hooks/useNovaAgent";
+import useAudioRecorder from "../hooks/useAudioRecorder";
 import { trimMessage } from "../utils/messageLimits";
 import { getInstallInstructions, isStandaloneApp } from "../utils/pwaInstall";
 
@@ -39,12 +40,18 @@ export default function Home() {
     () => typeof navigator !== "undefined" && navigator.onLine
   );
   const [useElevenLabs, setUseElevenLabs] = useState(readElevenLabsPreference);
+  const [voiceMode, setVoiceMode] = useState(() => {
+    // voiceMode: "tts" (text-to-speech), "s2s" (speech-to-speech), or "browser" (speechSynthesis)
+    if (typeof sessionStorage === "undefined") return "tts";
+    return sessionStorage.getItem("nova-voice-mode") || "tts";
+  });
   const recognitionRef = useRef(null);
   const processingRef = useRef(false);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const rafRef = useRef(null);
+  const { isRecording: isRecordingS2S, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
 
   const hasConversation = conversation.length > 0;
 
@@ -207,6 +214,42 @@ export default function Home() {
     setUseElevenLabs(false);
   };
 
+  const handleVoiceModeChange = (newMode) => {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem("nova-voice-mode", newMode);
+    }
+    setVoiceMode(newMode);
+  };
+
+  const convertSpeechToSpeech = async (audioBlob) => {
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.webm");
+
+      console.log("Sending audio to S2S endpoint", { size: audioBlob.size });
+      const res = await fetch("/api/speech-to-speech", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.skipElevenLabs) {
+          handleVoiceModeChange("browser");
+        }
+        console.error("S2S conversion failed", data);
+        return null;
+      }
+
+      const buffer = await res.arrayBuffer();
+      const blob = new Blob([buffer], { type: "audio/mpeg" });
+      return URL.createObjectURL(blob);
+    } catch (err) {
+      console.error("S2S conversion error:", err);
+      return null;
+    }
+  };
+
   const speakWithBrowser = (speechText) => {
     if (!window.speechSynthesis) {
       setPhase("responded");
@@ -342,6 +385,46 @@ export default function Home() {
         await toggleAgentSession();
       } catch (err) {
         alert(err.message || "Could not start Nova voice agent. Check microphone permission and agent settings.");
+      }
+      return;
+    }
+
+    // Handle Speech-to-Speech mode
+    if (voiceMode === "s2s") {
+      if (isRecordingS2S) {
+        // Stop recording and convert
+        try {
+          setPhase("thinking");
+          const audioBlob = await stopRecording();
+          console.log("Audio recorded, converting via S2S", { size: audioBlob.size });
+
+          const audioUrl = await convertSpeechToSpeech(audioBlob);
+          if (audioUrl) {
+            setPhase("speaking");
+            const audio = new Audio(audioUrl);
+            audio.onended = () => {
+              setPhase("responded");
+              URL.revokeObjectURL(audioUrl);
+            };
+            await audio.play();
+          } else {
+            setPhase("responded");
+            alert("Failed to convert speech. Please try again.");
+          }
+        } catch (err) {
+          console.error("S2S error:", err);
+          setPhase("responded");
+          alert("Error: " + (err.message || "Failed to process audio"));
+        }
+      } else {
+        // Start recording
+        try {
+          await startRecording();
+          setPhase("listening");
+        } catch (err) {
+          console.error("Recording error:", err);
+          alert("Could not access microphone: " + err.message);
+        }
       }
       return;
     }
@@ -789,7 +872,37 @@ export default function Home() {
             {statusText}
           </span>
 
-        <div className={`aura-visualizer-shell ${isActive ? "aura-visualizer-live" : ""}`}>
+          {/* Voice Mode Selector */}
+          {useElevenLabs && !agentEnabled && (
+            <div className="aura-voice-mode-selector">
+              <button
+                className={`aura-voice-mode-btn ${voiceMode === "tts" ? "aura-voice-mode-active" : ""}`}
+                type="button"
+                onClick={() => handleVoiceModeChange("tts")}
+                title="Text-to-Speech mode"
+              >
+                TTS
+              </button>
+              <button
+                className={`aura-voice-mode-btn ${voiceMode === "s2s" ? "aura-voice-mode-active" : ""}`}
+                type="button"
+                onClick={() => handleVoiceModeChange("s2s")}
+                title="Speech-to-Speech mode"
+              >
+                S2S
+              </button>
+              <button
+                className={`aura-voice-mode-btn ${voiceMode === "browser" ? "aura-voice-mode-active" : ""}`}
+                type="button"
+                onClick={() => handleVoiceModeChange("browser")}
+                title="Browser voice mode"
+              >
+                Browser
+              </button>
+            </div>
+          )}
+
+        <div className={`aura-visualizer-shell ${isActive || isRecordingS2S ? "aura-visualizer-live" : ""}`}>
           <div className="aura-visualizer-rings" aria-hidden="true">
             <span />
             <span />
@@ -813,14 +926,14 @@ export default function Home() {
           </div>
         </div>
 
-        {agentConnected || phase === "listening" ? (
+        {agentConnected || phase === "listening" || isRecordingS2S ? (
           <button
             className="aura-stop-button"
-            onClick={agentEnabled ? stopAgentSession : stopListening}
+            onClick={isRecordingS2S ? startVoice : (agentEnabled ? stopAgentSession : stopListening)}
             type="button"
           >
             <span className="aura-stop-icon" aria-hidden="true" />
-            {agentEnabled ? "End" : "Stop"}
+            {agentEnabled && (agentConnected || phase === "listening") ? "End" : "Stop"}
           </button>
         ) : (
           <button

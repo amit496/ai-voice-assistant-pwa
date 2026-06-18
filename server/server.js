@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import axios from "axios";
+import multer from "multer";
+import { ElevenLabsClient } from "elevenlabs";
 import {
   getAgentId,
   getElevenLabsModel,
@@ -30,6 +32,9 @@ app.use(cors());
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 app.use(express.urlencoded({ limit: JSON_BODY_LIMIT, extended: true }));
 
+// Multer for in-memory audio file uploads (max 10MB)
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
 // log incoming request sizes for debugging
 app.use((req, res, next) => {
   console.log("incoming", req.method, req.url, "content-length=", req.headers["content-length"]);
@@ -41,6 +46,9 @@ const GROQ_MODEL = process.env.GROQ_MODEL || FALLBACK_GROQ_MODEL;
 const GROQ_KEY = process.env.GROQ_API_KEY;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
+
+// Initialize ElevenLabs Client
+const elevenLabsClient = ELEVENLABS_API_KEY ? new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY }) : null;
 
 console.log("Server config", {
   GROQ_MODEL,
@@ -150,6 +158,61 @@ app.post("/voice", async (req, res) => {
   } catch (err) {
     const { status, error, skipElevenLabs } = parseElevenLabsError(err);
     console.error("/voice ElevenLabs error", status, error);
+    res.status(status).json({ error, skipElevenLabs });
+  }
+});
+
+app.post("/speech-to-speech", upload.single("audio"), async (req, res) => {
+  console.log("/speech-to-speech request received", { fileSize: req.file?.size });
+
+  if (!req.file) {
+    console.error("/speech-to-speech missing audio file");
+    return res.status(400).json({ error: "Missing audio file. Upload a WAV or MP3 file." });
+  }
+
+  if (!isElevenLabsEnabled()) {
+    return res.status(503).json({
+      error: "ElevenLabs is disabled. Set ELEVENLABS_ENABLED=true and API keys to enable.",
+      skipElevenLabs: true,
+    });
+  }
+
+  if (!ELEVENLABS_API_KEY || !ELEVENLABS_VOICE_ID) {
+    console.error("/speech-to-speech ElevenLabs not configured");
+    return res.status(500).json({ error: "ElevenLabs is not configured" });
+  }
+
+  if (!elevenLabsClient) {
+    console.error("/speech-to-speech ElevenLabsClient not initialized");
+    return res.status(500).json({ error: "ElevenLabs client initialization failed" });
+  }
+
+  try {
+    const model = getElevenLabsModel();
+    console.log("/speech-to-speech converting audio", {
+      voiceId: ELEVENLABS_VOICE_ID,
+      model,
+      audioSize: req.file.size,
+    });
+
+    const audioStream = await elevenLabsClient.speechToSpeech.convert(ELEVENLABS_VOICE_ID, {
+      audio: req.file.buffer,
+      model_id: model,
+      voice_settings: { stability: 0.65, similarity_boost: 0.75 },
+    });
+
+    const chunks = [];
+    for await (const chunk of audioStream) {
+      chunks.push(chunk);
+    }
+    const audioBuffer = Buffer.concat(chunks);
+
+    console.log("/speech-to-speech response generated", { outputSize: audioBuffer.byteLength });
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.send(audioBuffer);
+  } catch (err) {
+    const { status, error, skipElevenLabs } = parseElevenLabsError(err);
+    console.error("/speech-to-speech ElevenLabs error", status, error);
     res.status(status).json({ error, skipElevenLabs });
   }
 });

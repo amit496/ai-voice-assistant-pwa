@@ -144,6 +144,7 @@ body {
   display: flex;
   align-items: center;
   padding: 0 32px;
+  pointer-events: none;
 }
 
 .aura-header-content {
@@ -151,6 +152,7 @@ body {
   max-width: 100%;
   display: flex;
   align-items: center;
+  pointer-events: auto;
 }
 
 .aura-logo-section {
@@ -1620,4 +1622,39 @@ body {
     padding: 10px 16px;
     font-size: 12px;
   }
+}
+
+/* Voice Mode Selector */
+.aura-voice-mode-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.aura-voice-mode-btn {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(230, 238, 248, 0.7);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.aura-voice-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e6eef8;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.aura-voice-mode-btn.aura-voice-mode-active {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.4);
+  color: #06b6d4;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
 }
