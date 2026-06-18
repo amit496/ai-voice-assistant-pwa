@@ -218,6 +218,7 @@ export default function Home() {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem("nova-voice-mode", newMode);
     }
+    console.log("🎤 Voice Mode Changed:", newMode);
     setVoiceMode(newMode);
   };
 
@@ -285,6 +286,7 @@ export default function Home() {
   const speakReply = async (reply) => {
     const speechText = buildSpeechText(reply);
     if (!speechText) return;
+    console.log("🔊 Speaking reply via", useElevenLabs ? "ElevenLabs" : "Browser", { voiceMode });
 
     setPhase("speaking");
 
@@ -332,6 +334,7 @@ export default function Home() {
   const sendMessage = async (message) => {
     const safeMessage = trimMessage(message);
     if (!safeMessage) return;
+    console.log("💬 Sending message to Groq:", safeMessage);
 
     setConversation((prev) => [...prev, { role: "user", text: safeMessage }]);
     setLiveTranscript("");
@@ -379,6 +382,7 @@ export default function Home() {
 
   const startVoice = async () => {
     window.speechSynthesis?.cancel();
+    console.log("🎙️ startVoice called", { voiceMode, agentEnabled, phase });
 
     if (agentEnabled) {
       try {
@@ -391,6 +395,7 @@ export default function Home() {
 
     // Handle Speech-to-Speech mode
     if (voiceMode === "s2s") {
+      console.log("🔄 S2S Mode Active", { isRecordingS2S });
       if (isRecordingS2S) {
         // Stop recording and convert
         try {
