@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import MarkdownMessage, { buildSpeechText } from "../components/MarkdownMessage";
 import useLocalStorage from "../hooks/useLocalStorage";
 import useNovaAgent from "../hooks/useNovaAgent";
@@ -45,7 +45,20 @@ export default function Home() {
     if (typeof sessionStorage === "undefined") return "tts";
     return sessionStorage.getItem("nova-voice-mode") || "tts";
   });
+  const [statusNotice, setStatusNotice] = useState("");
+  const noticeTimerRef = useRef(null);
   const recognitionRef = useRef(null);
+  const showNotice = useCallback((message, timeout = 5000) => {
+    if (!message) {
+      setStatusNotice("");
+      return;
+    }
+    setStatusNotice(message);
+    window.clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = window.setTimeout(() => {
+      setStatusNotice("");
+    }, timeout);
+  }, []);
   const processingRef = useRef(false);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -207,12 +220,13 @@ export default function Home() {
     };
   }, [phase, speechSupported, agentConnected, isActive, updateAgentBars]);
 
-  const disableElevenLabs = () => {
+  const disableElevenLabs = useCallback(() => {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.setItem(ELEVENLABS_SKIP_KEY, "1");
     }
     setUseElevenLabs(false);
-  };
+    showNotice("ElevenLabs unavailable. Switched to browser voice.");
+  }, [showNotice]);
 
   const handleVoiceModeChange = (newMode) => {
     if (typeof sessionStorage !== "undefined") {
@@ -223,6 +237,11 @@ export default function Home() {
   };
 
   const convertSpeechToSpeech = async (audioBlob) => {
+    if (!isOnline) {
+      showNotice("Offline mode cannot convert speech to speech.");
+      return null;
+    }
+
     try {
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
@@ -274,14 +293,17 @@ export default function Home() {
         if (cancelled || !data) return;
         if (data.elevenLabsEnabled === false) {
           disableElevenLabs();
+          showNotice("ElevenLabs disabled by config. Using browser fallback.");
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        showNotice("Unable to verify ElevenLabs config. Continuing with current voice mode.");
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [useElevenLabs]);
+  }, [useElevenLabs, disableElevenLabs, showNotice]);
 
   const speakReply = async (reply) => {
     const speechText = buildSpeechText(reply);
@@ -290,7 +312,10 @@ export default function Home() {
 
     setPhase("speaking");
 
-    if (!useElevenLabs) {
+    if (!useElevenLabs || !isOnline) {
+      if (useElevenLabs && !isOnline) {
+        showNotice("Offline mode active — using browser speech.");
+      }
       speakWithBrowser(speechText);
       return;
     }
@@ -334,6 +359,11 @@ export default function Home() {
   const sendMessage = async (message) => {
     const safeMessage = trimMessage(message);
     if (!safeMessage) return;
+    if (!isOnline) {
+      showNotice("Offline: AI chat is unavailable while disconnected.");
+      setPhase("idle");
+      return;
+    }
     console.log("💬 Sending message to Groq:", safeMessage);
 
     setConversation((prev) => [...prev, { role: "user", text: safeMessage }]);
@@ -394,6 +424,12 @@ export default function Home() {
     }
 
     // Handle Speech-to-Speech mode
+    if (voiceMode === "s2s" && !isOnline) {
+      showNotice("Offline cannot convert speech to speech.");
+      alert("Offline mode cannot convert speech to speech.");
+      return;
+    }
+
     if (voiceMode === "s2s") {
       console.log("🔄 S2S Mode Active", { isRecordingS2S });
       if (isRecordingS2S) {
@@ -608,9 +644,34 @@ export default function Home() {
     if (!latestReply) return;
     try {
       await navigator.clipboard.writeText(latestReply);
+      showNotice("Reply copied to clipboard.");
     } catch (err) {
       console.error("Copy failed", err);
+      showNotice("Unable to copy reply.");
     }
+  };
+
+  const downloadTranscript = () => {
+    if (!conversation.length) {
+      showNotice("No conversation to export.");
+      return;
+    }
+
+    const lines = conversation.map((entry) => {
+      const label = entry.role === "user" ? "You" : "Nova";
+      return `${label}: ${entry.text}`;
+    });
+    const payload = `Nova transcript - ${new Date().toLocaleString()}\n\n${lines.join("\n")}`;
+    const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nova-transcript-${new Date().toISOString()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showNotice("Transcript downloaded.");
   };
 
   const statusText = agentConnected
@@ -628,6 +689,14 @@ export default function Home() {
         speaking: "Speaking...",
         responded: "Tap the mic to speak",
       }[phase];
+
+  const statusDetail = !isOnline
+    ? "Offline browser fallback"
+    : agentEnabled
+    ? "Live agent mode"
+    : useElevenLabs
+    ? "ElevenLabs TTS active"
+    : "Browser TTS fallback";
 
   return (
     <main className="aura-screen">
@@ -647,8 +716,10 @@ export default function Home() {
                     <stop offset="100%" stopColor="#ff9b00" />
                   </linearGradient>
                 </defs>
-                <rect width="32" height="32" rx="10" fill="url(#logoGradient)" />
-                <path d="M16 8v12M12 14h8" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M6 10C6 7.79086 7.79086 6 10 6H22C24.2091 6 26 7.79086 26 10V18C26 20.2091 24.2091 22 22 22H12L8 26V10Z" fill="url(#logoGradient)" />
+                <path d="M11 12H21" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M11 16H19" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M11 20H16" stroke="white" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
             <div className="aura-logo-text">
@@ -761,13 +832,22 @@ export default function Home() {
             {hasConversation && (
               <div className="aura-chat-header-actions">
                 <button
-                  className="aura-chat-clear-btn"
+                  className="aura-icon-btn aura-chat-clear-btn"
                   type="button"
                   onClick={clearConversation}
                   aria-label="Clear conversation"
-                  title="Clear conversation"
+                  data-tooltip="Clear conversation"
                 >
                   🗑️
+                </button>
+                <button
+                  className="aura-icon-btn aura-chat-export-btn"
+                  type="button"
+                  onClick={downloadTranscript}
+                  aria-label="Export conversation"
+                  data-tooltip="Export conversation"
+                >
+                  ⬇
                 </button>
               </div>
             )}
@@ -876,8 +956,14 @@ export default function Home() {
           >
             {statusText}
           </span>
-
-          {/* Voice Mode Selector hidden intentionally */}
+          <span className={`aura-status-detail ${isOnline ? "" : "aura-status-offline"}`}>
+            {statusDetail}
+          </span>
+          {statusNotice && (
+            <div className="aura-status-notice" role="status">
+              {statusNotice}
+            </div>
+          )}
 
         <div className={`aura-visualizer-shell ${isActive || isRecordingS2S ? "aura-visualizer-live" : ""}`}>
           <div className="aura-visualizer-rings" aria-hidden="true">
