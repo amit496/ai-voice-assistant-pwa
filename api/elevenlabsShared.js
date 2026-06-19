@@ -8,16 +8,6 @@ export function getAgentId() {
   return process.env.ELEVENLABS_AGENT_ID || '';
 }
 
-const DEFAULT_MODEL = 'eleven_flash_v2_5';
-
-export function getElevenLabsModel() {
-  return process.env.ELEVENLABS_MODEL || DEFAULT_MODEL;
-}
-
-export function getAgentId() {
-  return process.env.ELEVENLABS_AGENT_ID || '';
-}
-
 export function isAgentEnabled() {
   if (process.env.ELEVENLABS_AGENT_ENABLED === 'false') return false;
   const enabled = Boolean(getAgentId() && process.env.ELEVENLABS_API_KEY);
