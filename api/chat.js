@@ -22,9 +22,9 @@ export default async function handler(req, res) {
   try {
     const rawMessage = req.body?.message;
     const message = trimMessage(rawMessage);
-    console.log('/api/chat request body length', {
+    console.log('💬 [CHAT] Request received', {
       rawLength: String(rawMessage || '').length,
-      length: message.length,
+      trimmedLength: message.length,
     });
 
     if (!message) {
@@ -35,9 +35,11 @@ export default async function handler(req, res) {
     const GROQ_MODEL = process.env.GROQ_MODEL || FALLBACK_GROQ_MODEL;
 
     if (!GROQ_KEY) {
-      console.warn('/api/chat no GROQ key configured, echoing message');
+      console.warn('⚠️ [CHAT] GROQ_API_KEY not configured - using echo fallback');
       return res.json({ reply: `Echo: ${message}` });
     }
+
+    console.log('📡 [CHAT] Calling Groq API', { model: GROQ_MODEL });
 
     const callGroq = (model) =>
       axios.post(
@@ -46,7 +48,6 @@ export default async function handler(req, res) {
         { headers: { Authorization: `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' } }
       );
 
-    console.log('/api/chat calling Groq', { model: GROQ_MODEL });
     let response;
     try {
       response = await callGroq(GROQ_MODEL);
@@ -55,18 +56,22 @@ export default async function handler(req, res) {
         err?.response?.status === 413 ||
         err?.response?.data?.error?.code === 'request_too_large';
       if (isTooLarge && GROQ_MODEL !== FALLBACK_GROQ_MODEL) {
-        console.warn('/api/chat model too large, retrying with', FALLBACK_GROQ_MODEL);
+        console.warn('⚠️ [CHAT] Model too large, retrying with fallback', FALLBACK_GROQ_MODEL);
         response = await callGroq(FALLBACK_GROQ_MODEL);
       } else {
         throw err;
       }
     }
 
-    console.log('/api/chat Groq response', response.data || '(no data)');
     const reply = response.data?.choices?.[0]?.message?.content || '(no reply)';
+    console.log('✅ [CHAT] Groq response received', { replyLength: reply.length });
     return res.json({ reply });
   } catch (err) {
-    console.error('/api/chat error', err?.response?.status, err?.response?.data || err.message || err);
+    console.error('❌ [CHAT] Error', {
+      status: err?.response?.status,
+      message: err?.response?.data?.error?.message || err.message,
+      fullError: err?.response?.data,
+    });
     const status = err?.response?.status;
     const apiMessage = err?.response?.data?.error?.message;
     const reply =

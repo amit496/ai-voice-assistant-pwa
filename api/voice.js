@@ -18,10 +18,11 @@ export default async function handler(req, res) {
 
   try {
     const text = trimText(req.body?.text);
-    console.log('/api/voice request body length', (text || '').length);
+    console.log('🔊 [VOICE] Text-to-speech request', { length: (text || '').length });
     if (!text) return res.status(400).json({ error: 'missing text' });
 
     if (!isElevenLabsEnabled()) {
+      console.warn('⚠️ [VOICE] ElevenLabs disabled - Text-to-speech skipped');
       return res.status(503).json({
         error: 'ElevenLabs is disabled. Set ELEVENLABS_ENABLED=true and API keys to enable.',
         skipElevenLabs: true,
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
     const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
 
     if (!ELEVENLABS_API_KEY || !ELEVENLABS_VOICE_ID) {
-      console.error('/api/voice ElevenLabs not configured', {
+      console.error('❌ [VOICE] ElevenLabs not configured', {
         hasKey: !!ELEVENLABS_API_KEY,
         hasVoiceId: !!ELEVENLABS_VOICE_ID,
       });
@@ -43,7 +44,7 @@ export default async function handler(req, res) {
     }
 
     const model = getElevenLabsModel();
-    console.log('/api/voice calling ElevenLabs', { voiceId: ELEVENLABS_VOICE_ID, model });
+    console.log('📡 [VOICE] Calling ElevenLabs API', { voiceId: ELEVENLABS_VOICE_ID, model });
     const response = await axios.post(
       `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
       {
@@ -61,12 +62,12 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('/api/voice ElevenLabs response length', response.data?.byteLength);
+    console.log('✅ [VOICE] ElevenLabs response received', { byteLength: response.data?.byteLength });
     res.setHeader('Content-Type', 'audio/mpeg');
     return res.send(response.data);
   } catch (err) {
     const { status, error, skipElevenLabs } = parseElevenLabsError(err);
-    console.error('/api/voice ElevenLabs error', status, error);
+    console.error('❌ [VOICE] ElevenLabs error', { status, error, response: err?.response?.data });
     return res.status(status).json({ error, skipElevenLabs });
   }
 }

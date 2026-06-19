@@ -8,14 +8,28 @@ export function getAgentId() {
   return process.env.ELEVENLABS_AGENT_ID || '';
 }
 
+const DEFAULT_MODEL = 'eleven_flash_v2_5';
+
+export function getElevenLabsModel() {
+  return process.env.ELEVENLABS_MODEL || DEFAULT_MODEL;
+}
+
+export function getAgentId() {
+  return process.env.ELEVENLABS_AGENT_ID || '';
+}
+
 export function isAgentEnabled() {
   if (process.env.ELEVENLABS_AGENT_ENABLED === 'false') return false;
-  return Boolean(getAgentId() && process.env.ELEVENLABS_API_KEY);
+  const enabled = Boolean(getAgentId() && process.env.ELEVENLABS_API_KEY);
+  if (enabled) console.log('✅ [ELEVENLABS] Conversational AI Agent ENABLED');
+  return enabled;
 }
 
 export function isElevenLabsEnabled() {
   if (process.env.ELEVENLABS_ENABLED === 'false') return false;
-  return Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID);
+  const enabled = Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID);
+  if (enabled) console.log('✅ [ELEVENLABS] Text-to-Speech (TTS) ENABLED');
+  return enabled;
 }
 
 export function parseElevenLabsError(err) {

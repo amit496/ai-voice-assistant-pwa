@@ -12,13 +12,24 @@ export default function handler(req, res) {
   }
 
   const agentEnabled = isAgentEnabled();
+  const elevenLabsEnabled = isElevenLabsEnabled();
+  const voiceMode = agentEnabled ? 'agent' : elevenLabsEnabled ? 'tts' : 'browser';
+
+  console.log('✅ [API CONFIG] Voice Configuration:', {
+    agentEnabled,
+    agentId: agentEnabled ? getAgentId() : 'NOT SET',
+    elevenLabsEnabled,
+    elevenLabsModel: getElevenLabsModel(),
+    groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    voiceMode,
+  });
 
   return res.json({
     groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-    elevenLabsEnabled: isElevenLabsEnabled(),
+    elevenLabsEnabled,
     elevenLabsModel: getElevenLabsModel(),
     agentEnabled,
     agentId: agentEnabled ? getAgentId() : null,
-    voiceMode: agentEnabled ? 'agent' : isElevenLabsEnabled() ? 'tts' : 'browser',
+    voiceMode,
   });
 }
