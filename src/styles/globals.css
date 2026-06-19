@@ -341,8 +341,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: 14px;
   font-size: 18px;
@@ -448,9 +448,9 @@ body {
 .aura-chat-clear-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
-  color: #86868b;
+  color: crimson;
   padding: 8px 12px;
   line-height: 1;
   transition: all 0.2s ease;
@@ -458,8 +458,8 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 20px;
+  min-height: 20px;
 }
 
 .aura-chat-clear-btn:hover {
