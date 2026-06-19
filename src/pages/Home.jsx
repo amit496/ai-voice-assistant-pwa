@@ -51,7 +51,7 @@ export default function Home() {
   const analyserRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const rafRef = useRef(null);
-  const { isRecording: isRecordingS2S, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
+  const { isRecording: isRecordingS2S, startRecording, stopRecording } = useAudioRecorder();
 
   const hasConversation = conversation.length > 0;
 
@@ -877,35 +877,7 @@ export default function Home() {
             {statusText}
           </span>
 
-          {/* Voice Mode Selector */}
-          {useElevenLabs && !agentEnabled && (
-            <div className="aura-voice-mode-selector">
-              <button
-                className={`aura-voice-mode-btn ${voiceMode === "tts" ? "aura-voice-mode-active" : ""}`}
-                type="button"
-                onClick={() => handleVoiceModeChange("tts")}
-                title="Text-to-Speech mode"
-              >
-                TTS
-              </button>
-              <button
-                className={`aura-voice-mode-btn ${voiceMode === "s2s" ? "aura-voice-mode-active" : ""}`}
-                type="button"
-                onClick={() => handleVoiceModeChange("s2s")}
-                title="Speech-to-Speech mode"
-              >
-                S2S
-              </button>
-              <button
-                className={`aura-voice-mode-btn ${voiceMode === "browser" ? "aura-voice-mode-active" : ""}`}
-                type="button"
-                onClick={() => handleVoiceModeChange("browser")}
-                title="Browser voice mode"
-              >
-                Browser
-              </button>
-            </div>
-          )}
+          {/* Voice Mode Selector hidden intentionally */}
 
         <div className={`aura-visualizer-shell ${isActive || isRecordingS2S ? "aura-visualizer-live" : ""}`}>
           <div className="aura-visualizer-rings" aria-hidden="true">
